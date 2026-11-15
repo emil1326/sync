@@ -1,5 +1,5 @@
 import { useFocusEffect } from "expo-router/react-navigation";
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Dimensions, Image, Keyboard, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, useColorScheme, View } from 'react-native';
 //import getUniqueId from 'react-native-device-info'
@@ -10,6 +10,7 @@ import { usePalette } from '@/contextes/contextePalette';
 import { useRouteAbs } from '@/contextes/contexteRoute';
 import log from '@/functions/log';
 
+import CheckboxAbs from "@/abstractions/checkboxAbs";
 import Haptics from '@/abstractions/haptics.js';
 import KeyboardDismisser from "@/abstractions/keyboardDismisser";
 import { LinkAbs } from '@/abstractions/linkAbs';
@@ -17,15 +18,12 @@ import TextInputAbs from '@/abstractions/textInputAbs';
 import ToastAbs from "@/abstractions/toastAbs";
 import BetaTag from '@/components/betaTag';
 import ServerStatus from '@/components/serverStatus';
+import Radius from "@/constants/Radius";
 import { toastTypes } from "@/constants/toastConfig";
 import catcher from '@/functions/catcher';
 import { router } from 'expo-router';
-import Radius from "@/constants/Radius";
-import CheckboxAbs from "@/abstractions/checkboxAbs";
 
-export default function InscriptionEcran({
-    
-}){
+export default function InscriptionEcran(){
     const { t } = useTranslation('auth')
     const courrRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/
     const mdpLong = 12
@@ -57,16 +55,16 @@ export default function InscriptionEcran({
     const [mdpLongValide, setMdpLongValide] = useState(false)
     const [mdpCarSpeciauxValide, setMdpCarSpeciauxValide] = useState(false)
     const [mdpMinMajValide, setMdpMinMajValide] = useState(false)
-    const [pass2Valid, setPass2Valid] = useState(true)
     const [hidePass, setMasquerMdp] = useState(true)
-    const [mdpValide, setMdpValide] = useState(false)
     const [courriel, setCourriel] = useState('')
-    const [courrielValide, setCourrielValide] = useState(true)
-
-    const [isInactive, setEstDesactive] = useState(true)
 
     const [checkedPolitics, setCheckedPolitics] = useState(false)
     const [checkedConditions, setCheckedConditions] = useState(false)
+
+    const mdpValide = mdpLongValide && mdpCarSpeciauxValide && mdpMinMajValide
+    const pass2Valid = pass === pass2
+    const courrielValide = courriel.length === 0 || courrRegex.test(courriel)
+    const isInactive = !mdpValide || !pass2Valid || !courrielValide || !checkedConditions || !checkedPolitics
 
     let inputPositions = useRef({
         pseudo: 0,
@@ -114,7 +112,7 @@ export default function InscriptionEcran({
                 data:data
             })
             
-            if(response.status == 201){
+            if(response.status === 201){
                 ToastAbs.show({
                     type: toastTypes.success,
                     text1: t('register.successTitle'),
@@ -130,12 +128,6 @@ export default function InscriptionEcran({
           }
     }    
 
-    const lookForInvalidInput = () => {
-        if(!courrielValide){
-
-        }
-    }
-
     useFocusEffect(useCallback(()=>{
         ajouterEcran('inscription')
 
@@ -147,24 +139,7 @@ export default function InscriptionEcran({
         return()=>{
             keyDidHide.remove()
         }
-    },[]))
-
-    useEffect(()=>{
-        setMdpValide(mdpLongValide && mdpCarSpeciauxValide && mdpMinMajValide )
-        if(courrRegex.test(courriel)){
-            setCourrielValide(true)
-        }
-
-        const checksValid = checkedConditions && checkedPolitics
-       
-        setEstDesactive(!mdpValide || !pass2Valid || !courrielValide || !checksValid)   
-
-    }, [mdpLongValide, mdpCarSpeciauxValide, mdpMinMajValide, pass2Valid, courriel, checkedConditions, checkedPolitics])
-
-    useEffect(() => {
-        if (pass != pass2)
-            setPass2Valid(false)
-    }, [pass])
+    },[ajouterEcran]))
 
     const s = StyleSheet.create({
         container:{
@@ -453,11 +428,6 @@ export default function InscriptionEcran({
                         returnKeyType='done'
                         placeholder={t('register.confirmPasswordPlaceholder')}
                         onChangeText={(pass2)=>{
-                            if(pass2 === pass){
-                                setPass2Valid(true)
-                            }
-                            else
-                                setPass2Valid(false)
                             setPass2(pass2)
                         }}
                         onFocus={()=>{
@@ -488,13 +458,13 @@ export default function InscriptionEcran({
                                 <Text style={s.politicsText}>la politique de confidentialité</Text>    
                             </CheckboxAbs>
                             <CheckboxAbs checked={checkedConditions} onPress={() => setCheckedConditions((prev) => !prev)} style={s.politicsRow} >
-                                <Text style={s.politicsText}>le contrat d'utilisation</Text>
+                                <Text style={s.politicsText}>le contrat d&apos;utilisation</Text>
                             </CheckboxAbs>
                         <LinkAbs externalLink={true} href='https://www.syncalkemy.ca/confidentialite.html' >
                             <Text>voir la politique de confidentialité</Text>
                         </LinkAbs>
                         <LinkAbs externalLink={true} href='https://www.syncalkemy.ca/contrat_dutilisation.html' >
-                            <Text>voir les conditions d'utilisations</Text>
+                            <Text>voir les conditions d&apos;utilisations</Text>
                         </LinkAbs>
                     </View>
                     {/* Buttons container */}
