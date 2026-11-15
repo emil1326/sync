@@ -1,7 +1,7 @@
 import { router, useLocalSearchParams, useNavigation } from "expo-router";
 import { useFocusEffect, useIsFocused } from "expo-router/react-navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
 import { DateTime } from "luxon";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
@@ -12,22 +12,23 @@ import { useFont } from "@/contextes/contexteFont";
 import { useMembre } from "@/contextes/contexteMembre";
 import { usePalette } from "@/contextes/contextePalette";
 
-import catcher from "@/functions/catcher";
 import ToastAbs from "@/abstractions/toastAbs";
+import events from "@/api/events";
 import { toastTypes } from "@/constants/toastConfig";
-import chargerDetailsEvenement from "@/functions/chargerDetailsEvenement";
+import catcher from "@/functions/catcher";
 import log from "@/functions/log";
 
 import EventForm from "@/components/eventForm";
-import Spinner from "@/components/spinner";
-import useGestionEvenement from "@/hooks/useGestionEvenement";
-import { useNavFab } from "@/hooks/useNavFAB";
 import PanneauDecisionInvitation from "@/components/panneauDecisionInvitation";
 import PanneauReport from "@/components/panneauReport";
+import Spinner from "@/components/spinner";
+import AutoRefresh from "@/functions/autoRefresh";
 import ouvrirRevueInvitation from "@/functions/ouvrirRevueInvitation";
 import useDecisionInvitation from "@/hooks/useDecisionInvitation";
-import { InvitationInfo } from "@/types/invitation";
+import useGestionEvenement from "@/hooks/useGestionEvenement";
+import { useNavFab } from "@/hooks/useNavFAB";
 import { defaultEvent, Event } from "@/types/calendar";
+import { InvitationInfo } from "@/types/invitation";
 import Icon from "@react-native-vector-icons/ionicons";
 
 export default function Details(){
@@ -61,7 +62,22 @@ export default function Details(){
         onVoirHoraire: voirHoraire,
     })
 
+    const detailsRefresh = useRef<AutoRefresh>(null);
+
     const [event, setEvent] = useState<Event>(defaultEvent)  
+
+    const appliquerDetails = useCallback((data: Event) => {
+        setEvent(events.getDetails.onData(data))
+    }, [])
+
+    const getDetails = useCallback(async (id: string) => {
+        try {
+            const data = await events.getDetails.get(api, id)
+            appliquerDetails(data)
+        } catch (error) {
+            catcher(error, "on trouve pas ton évènement...")
+        }
+    }, [api, appliquerDetails])
 
     const isExternal = useMemo(() => event.nom_calendrier !== undefined && (event.source == 'google' || event.source === 'outlook' || event.source === 'device') ,[event])
 
@@ -104,19 +120,6 @@ export default function Details(){
     }, [start, end])
     const gestion = useGestionEvenement(event, { onTermine: () => router.back(), occurrence })
 
-    const getDetails = async (id: string) => {
-        try {
-            setEvent(await chargerDetailsEvenement(
-                api, id, membre.timezone,
-                typeof start === "string" ? start : undefined,
-                typeof end === "string" ? end : undefined,
-            ))
-        } catch (error) {
-            router.back()
-            catcher(error, t('errors.loadFailed'))
-        }
-    }
-
     const FABParams = useMemo(
         () => ({ event: JSON.stringify(event) }),
         [event]
@@ -136,11 +139,18 @@ export default function Details(){
     const indisponibilite = event.nature === 'indisponibilite'
 
     useFocusEffect(useCallback(() => {
-        if (typeof eventId === 'string')
+        if (typeof eventId === 'string') {
+            detailsRefresh.current = new AutoRefresh(api, events.getDetails.url(eventId), {
+                onData: appliquerDetails,
+                onError: (error) => catcher(error, "on trouve pas ton évènement..."),
+            })
             getDetails(eventId)
-        return () => {
         }
-    }, [isFocused, eventId, membre?.timezone]))
+        return () => {
+            detailsRefresh.current?.destroy()
+            detailsRefresh.current = null
+        }
+    }, [isFocused, eventId, membre?.timezone, api, appliquerDetails, getDetails]))
 
     useEffect(() => {
         log("event dans details", event)
