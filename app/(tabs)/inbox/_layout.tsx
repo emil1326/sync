@@ -44,6 +44,11 @@ export default function InboxLayout() {
                 name="profil/[membreId]"
                 options={{ headerBackButtonDisplayMode: 'minimal', headerTitle: '' }}
             />
+            {/* All the photos of a conversation (from its info; the screen sets its title) */}
+            <Stack.Screen
+                name="photos/[conversationId]"
+                options={{ headerBackButtonDisplayMode: 'minimal' }}
+            />
         </Stack>
     )
 }

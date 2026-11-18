@@ -55,6 +55,10 @@ export default function HomeLayout() {
             <Stack.Screen
                 name="conversation/infos/[conversationId]" options={{headerBackVisible:true, headerBackButtonDisplayMode:'minimal', headerTitle:''}}
             />
+            {/* All its photos (from its info; the screen sets its title) */}
+            <Stack.Screen
+                name="conversation/photos/[conversationId]" options={{headerBackVisible:true, headerBackButtonDisplayMode:'minimal'}}
+            />
         </Stack>
     )
 }

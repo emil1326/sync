@@ -2,11 +2,14 @@ import Icon from '@react-native-vector-icons/ionicons'
 import { router, useFocusEffect, useLocalSearchParams, useNavigation, useSegments } from 'expo-router'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
+import { ActivityIndicator, Alert, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 
 import ToastAbs from '@/abstractions/toastAbs'
 import BoutonAjouterAmi, { RelationAmitie } from '@/components/boutonAjouterAmi'
 import ProfilPic from '@/components/pfp'
+import VisionneusePhotos from '@/components/visionneusePhotos'
+import { chargerPhotosConversation } from '@/functions/photosConversation'
+import { PhotoEvenement } from '@/types/albumEvenement'
 import { toastTypes } from '@/constants/toastConfig'
 import { useAPI } from '@/contextes/contexteAPI'
 import { useConversations } from '@/contextes/contexteConversations'
@@ -16,6 +19,10 @@ import { usePalette } from '@/contextes/contextePalette'
 import catcher from '@/functions/catcher'
 import { convertUTCToLocal } from '@/functions/convertirUTCenLocal'
 import { convertirTimestampDateLongue, convertirTimestampHeure, convertirTimestampJourCourt } from '@/functions/convertirTimestamp'
+
+/** Photos shown in the info screen (3 rows of 3) */
+const MAX_PHOTOS_INFOS = 9
+const ESPACE_GRILLE = 2
 
 /** GET /conversations/:id */
 type InfosConversation = {
@@ -50,7 +57,7 @@ export default function InfosConversationEcran() {
     const { t } = useTranslation('inbox')
     const { colors } = usePalette()
     const { fonts } = useFont()
-    const { api } = useAPI()
+    const { api, APIBaseURL } = useAPI()
     const { membre } = useMembre()
     const { conversationId } = useLocalSearchParams<{ conversationId: string }>()
     const dansAccueil = (useSegments() as string[]).includes('home')
@@ -60,6 +67,10 @@ export default function InfosConversationEcran() {
     const navigation = useNavigation()
     const { rafraichirConversations } = useConversations()
     const [suppressionEnCours, setSuppressionEnCours] = useState(false)
+    // Photos sent in the conversation: the latest in a grid here, all of them one tap away
+    const [photos, setPhotos] = useState<PhotoEvenement[]>([])
+    const [indexPhoto, setIndexPhoto] = useState<number | null>(null)
+    const [largeurGrille, setLargeurGrille] = useState(0)
 
     /**
      * Deletes the conversation (its admins), after a confirmation: messages included, for
@@ -92,6 +103,9 @@ export default function InfosConversationEcran() {
 
     useFocusEffect(useCallback(() => {
         let actif = true
+        chargerPhotosConversation(api, conversationId)
+            .then((liste) => { if (actif) setPhotos(liste) })
+            .catch((error) => { if (actif) catcher(error, t('photos.loadFailed')) })
         api.get(`/conversations/${encodeURIComponent(conversationId)}`)
             .then(({ data }) => {
                 if (!actif) return
@@ -115,6 +129,13 @@ export default function InfosConversationEcran() {
         } as any)
     }
 
+    const ouvrirToutesLesPhotos = () => {
+        router.push({
+            pathname: dansAccueil ? '/(tabs)/home/conversation/photos/[conversationId]' : '/(tabs)/inbox/photos/[conversationId]',
+            params: { conversationId },
+        } as any)
+    }
+
     const ouvrirEvenement = () => {
         if (!infos?.evenement) return
         router.push({
@@ -129,6 +150,11 @@ export default function InfosConversationEcran() {
 
     const s = StyleSheet.create({
         page: { flexGrow: 1, padding: 20, gap: 20, backgroundColor: colors.background },
+        titrePhotos: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: -12, marginHorizontal: 4 },
+        voirTout: { flexDirection: 'row', alignItems: 'center', gap: 2 },
+        grille: { flexDirection: 'row', flexWrap: 'wrap', gap: ESPACE_GRILLE },
+        voile: { ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.5)' },
+        texteVoile: { color: 'white', fontFamily: fonts.title, fontSize: 20 },
         entete: { alignItems: 'center', gap: 8 },
         titre: { color: colors.text, fontFamily: fonts.title, fontSize: 22, textAlign: 'center' },
         sousTitre: { color: colors.muted, fontFamily: fonts.body, fontSize: 15 },
@@ -248,6 +274,46 @@ export default function InfosConversationEcran() {
                 })}
             </View>
 
+            {/* Photos sent in the conversation: up to 9 here (the 9th shows how many more),
+                "See all" for the whole album */}
+            {photos.length > 0 && (
+                <>
+                    <View style={s.titrePhotos}>
+                        <Text style={[s.section, { marginBottom: 0 }]}>{t('photos.section', { count: photos.length })}</Text>
+                        <TouchableOpacity onPress={ouvrirToutesLesPhotos} hitSlop={8} style={s.voirTout} accessibilityRole="button">
+                            <Text style={s.detail}>{t('photos.seeAll')}</Text>
+                            <Icon name="chevron-forward" size={14} color={colors.muted} />
+                        </TouchableOpacity>
+                    </View>
+                    <View
+                        style={[s.carte, s.grille]}
+                        onLayout={(e) => setLargeurGrille(e.nativeEvent.layout.width)}
+                    >
+                        {largeurGrille > 0 && photos.slice(0, MAX_PHOTOS_INFOS).map((p, i) => {
+                            const cote = (largeurGrille - ESPACE_GRILLE * 2) / 3
+                            const reste = photos.length - MAX_PHOTOS_INFOS
+                            const derniere = i === MAX_PHOTOS_INFOS - 1 && reste > 0
+                            return (
+                                <TouchableOpacity
+                                    key={p.id}
+                                    onPress={() => (derniere ? ouvrirToutesLesPhotos() : setIndexPhoto(i))}
+                                    accessibilityRole="imagebutton"
+                                    accessibilityLabel={derniere ? t('photos.seeAll') : t('photos.open', { pseudo: p.auteur.pseudo })}
+                                    style={{ width: cote, height: cote, backgroundColor: colors.border }}
+                                >
+                                    <Image source={{ uri: `${APIBaseURL}${p.url}` }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+                                    {derniere && (
+                                        <View style={s.voile}>
+                                            <Text style={s.texteVoile}>+{reste + 1}</Text>
+                                        </View>
+                                    )}
+                                </TouchableOpacity>
+                            )
+                        })}
+                    </View>
+                </>
+            )}
+
             {/* Its admins can delete it (an event's can be created again from the event) */}
             {infos.mon_role === 'editeur' && (
                 <TouchableOpacity
@@ -269,6 +335,7 @@ export default function InfosConversationEcran() {
                     {t('infos.createdOn', { date: convertirTimestampDateLongue(local(infos.cree_le)) })}
                 </Text>
             )}
+            <VisionneusePhotos photos={photos} indexDepart={indexPhoto} onFermer={() => setIndexPhoto(null)} />
         </ScrollView>
     )
 }
