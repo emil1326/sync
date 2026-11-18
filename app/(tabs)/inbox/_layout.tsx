@@ -1,34 +1,18 @@
-import Icon from "@react-native-vector-icons/ionicons";
-import { router, Stack } from "expo-router";
+import { Stack } from "expo-router";
 import { useTranslation } from "react-i18next";
-import { TouchableOpacity } from "react-native";
 
 import { useFont } from "@/contextes/contexteFont";
-import { usePalette } from "@/contextes/contextePalette";
 
 export default function InboxLayout() {
     const { t } = useTranslation('inbox')
     const { fonts } = useFont()
-    const { colors } = usePalette()
     return (
         <Stack screenOptions={{ headerTransparent: false, headerTitleStyle: { fontFamily: fonts.title } }}>
-            {/* The conversations list: a header like the other tabs ("Messages"), with a
-                button to write to a friend (same as the + of the tab bar) */}
+            {/* The conversations list: a header like the other tabs ("Messages"). New
+                message: the tab bar's middle button (chat bubble with a +) */}
             <Stack.Screen
                 name="index"
-                options={{
-                    headerTitle: t('title'),
-                    headerRight: () => (
-                        <TouchableOpacity
-                            onPress={() => router.push({ pathname: '/(modals)/listeAmis', params: { type: 'message' } })}
-                            hitSlop={10}
-                            accessibilityRole="button"
-                            accessibilityLabel={t('newMessage')}
-                        >
-                            <Icon name="create-outline" size={24} color={colors.text} />
-                        </TouchableOpacity>
-                    ),
-                }}
+                options={{ headerTitle: t('title') }}
             />
             <Stack.Screen
                 name="[conversationId]"
