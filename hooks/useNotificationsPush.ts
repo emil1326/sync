@@ -72,7 +72,8 @@ export default function useNotificationsPush(): void {
             if (estMessage && data.conversationId === conversationOuverteMaintenant()) return
             ToastAbs.show({
                 type: toastTypes.notification,
-                text1: t(cleTitreToast(data.type as string | undefined)),
+                // an event album notification (photos to approve, accepted, refused)
+                text1: t(data.album ? 'push.title.album' : cleTitreToast(data.type as string | undefined)),
                 text2: t('push.tapToOpen'),
                 props: { categorie: categorieNotification(data.type as string | undefined) },
                 visibilityTime: DUREE_TOAST_NOTIFICATION,
