@@ -10,7 +10,8 @@
 		"expires": "expire {{quand}}",
 		"eventPastShort": "passé",
 		"eventPast": "Cet évènement est déjà passé.",
-		"invitationExpired": "Cette invitation a expiré : il est trop tard pour y répondre."
+		"invitationExpired": "Cette invitation a expiré : il est trop tard pour y répondre.",
+		"left": "Tu as quitté cet évènement : tu n'y participes plus."
 	},
 	"list": {
 		"emptyState": "Il n'y a rien pour toi...\nAlors profite de ce moment pour toi !",
@@ -20,7 +21,8 @@
 	"answer": {
 		"acceptee": "acceptée",
 		"refusee": "refusée",
-		"en_attente": "en attente"
+		"en_attente": "en attente",
+		"annulee": "annulée"
 	},
 	"vote": {
 		"acceptee": "disponible",
@@ -37,5 +39,18 @@
 	"errors": {
 		"actionFailed": "erreur à l'action",
 		"deleteFailed": "impossible de supprimer une notification"
+	},
+	"push": {
+		"title": {
+			"invitation": "Nouvelle invitation à un évènement",
+			"vote": "Un changement d'horaire est proposé",
+			"event": "Un de tes évènements a changé",
+			"friendship": "Tu as un nouvel ami",
+			"friendRequest": "Nouvelle demande d'ami",
+			"other": "Nouvelle notification",
+			"message": "Nouveau message",
+			"album": "Album photo"
+		},
+		"tapToOpen": "Touche pour voir"
 	}
 }

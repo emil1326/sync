@@ -28,5 +28,8 @@
         "local": "à partir de l'appareil ou fichier .ics",
         "google": "à partir de Google",
         "outlook": "à partir du Outlook"
-    }
+    },
+    "privacy":"confidentialité",
+    "messagePreview":"texte des messages dans les notifications",
+    "messagePreviewFailed":"le réglage n'a pas pu être changé"
 }

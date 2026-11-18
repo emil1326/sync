@@ -76,6 +76,7 @@ const CreationIndisponibilite = forwardRef<CreationHandle>(function CreationIndi
                 // An empty title (no reason) is shown as "Unavailable" (titreEvenement).
                 ...corpsCreation(values),
                 participants: [],
+                depuis_dispo_commune: false
             }
             const response = await api.post('/evenements/', nouvelle)
             if (response.status === 201) {
@@ -99,7 +100,7 @@ const CreationIndisponibilite = forwardRef<CreationHandle>(function CreationIndi
     })
 
     /**
-     * The conflict screen is left: closes it; created (or dropped) → back to the home
+     * The conflict screen is left: closes it; created → back to the home
      * timeline, "adjust" → back to where the creation started, else stays on the form.
      *
      * @author Philip — user story 20 (review)

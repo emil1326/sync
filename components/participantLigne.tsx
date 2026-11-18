@@ -48,41 +48,13 @@ export default function ParticipantLigne({participant, participantsUrl = undefin
         croix:colorScheme === "dark" ? require('@/assets/icones/croix-dark-icon.png'):require('@/assets/icones/croix-light-icon.png')
     }
 
-    const [p, setParticipant] = useState<Participant>()
+    // Fetched pseudo / picture, when the participant came without them
+    const [participantCharge, setParticipantCharge] = useState<Participant>()
+    // The participant shown: as given when it has its pseudo, the fetched one otherwise,
+    // nothing without a public id. Derived during the render (it used to be copied into
+    // a state by an effect, which drew the row once more for nothing).
+    const p = !participant.id ? undefined : participant.pseudo ? participant : participantCharge
     const [suppressionEnCours, setSuppressionEnCours] = useState(false)
-
-    /**
-     * Uses the participant as given, or fetches their pseudo and picture from
-     * GET /membres/:id when they're missing.
-     *
-     * @returns {Promise<void>}
-     */
-    const getParticipant = async () => {
-        //log("participant", participant)
-        const {fp_url, pseudo} = participant
-        if (!participant.id) {
-            log('participant sans identifiant public, chargement ignoré', pseudo)
-            setParticipant(undefined)
-            return
-        }
-        if(!pseudo){
-            try {
-                const response = await api.get(`membres/${participant.id}`)
-                const fetchedParticipant: Participant = {
-                    ...participant,
-                    id: response.data.id_publique ?? participant.id,
-                    pseudo: response.data.pseudo,
-                    fp_url: response.data.fp_url ?? fp_url ?? null,
-                }
-                log("fetched participant:", fetchedParticipant)
-                setParticipant(fetchedParticipant)
-            } catch (error) {
-                catcher(error, t('errors.participantLoadFailed', { id: participant.id }))
-                setParticipant(undefined)
-            }
-        }else
-            setParticipant(participant)
-    }
 
     /**
      * Removes this participant (server-side too when the event already exists),
@@ -98,8 +70,36 @@ export default function ParticipantLigne({participant, participantsUrl = undefin
         if (succes) onParticipantSupprime?.(p.id)
     }
 
+    /**
+     * Fetches the participant's pseudo and picture from GET /membres/:id when they're
+     * missing (the state is only set once the answer is there).
+     */
     useEffect(()=>{
-        getParticipant()
+        const {fp_url, pseudo} = participant
+        if (!participant.id) {
+            log('participant sans identifiant public, chargement ignoré', pseudo)
+            return
+        }
+        if (pseudo) return
+        let annule = false
+        api.get(`membres/${participant.id}`)
+            .then((response) => {
+                if (annule) return
+                const fetchedParticipant: Participant = {
+                    ...participant,
+                    id: response.data.id_publique ?? participant.id,
+                    pseudo: response.data.pseudo,
+                    fp_url: response.data.fp_url ?? fp_url ?? null,
+                }
+                log("fetched participant:", fetchedParticipant)
+                setParticipantCharge(fetchedParticipant)
+            })
+            .catch((error) => {
+                if (annule) return
+                catcher(error, t('errors.participantLoadFailed', { id: participant.id }))
+                setParticipantCharge(undefined)
+            })
+        return () => { annule = true }
     }, [])
 
     const peutSupprimer = p ? (peutGererParticipants && p.id !== membre.idPublique) : false

@@ -21,12 +21,13 @@ import { modalEvents } from "@/events/modalEvents";
 import { useFriendList } from "@/hooks/useFriendList";
 
 import { ListType } from "@/app/(modals)/listeAmis";
+import { useEventDraft } from "@/contextes/contexteEventDraft";
+import { paramsPlage } from "@/functions/evenementsMembre";
 import log from "@/functions/log";
 import { Participant } from "@/types/invites";
 import { DateTime } from "luxon";
-import { useEventDraft } from "@/contextes/contexteEventDraft";
+import Ionicons from "@react-native-vector-icons/ionicons";
 import FriendLine from "./friendLine";
-import { paramsPlage } from "@/functions/evenementsMembre";
 
 export type FriendAPIRes = {
     temps_amitie: string,
@@ -43,7 +44,7 @@ function EventListAmiContent() {
     const { fonts } = useFont()
     const colorScheme = useColorScheme()
     const { invites } = useInvites()
-    const {start, end, friendsSuggestions} = useEventDraft()
+    const { start, end, friendsSuggestions } = useEventDraft()
 
     const { type, inviterUrl, hasMoreFriends: hasMoreFriendsParam, excludedFriendIds: excludedFriendIdsParam } = useLocalSearchParams() as { type: ListType; inviterUrl: string; hasMoreFriends: string; excludedFriendIds?: string }
     const select = type === 'select' || type === 'event'
@@ -109,6 +110,23 @@ function EventListAmiContent() {
 
     const onPressSelect = useFriendList('select')
     const onPressConsult = useFriendList('consult')
+
+    // Friends picked in this modal (the ones already invited aren't in the list)
+    const nbSelectionnes = useMemo(() => {
+        const dejaInvites = new Set([...invites.map(invite => invite.id), ...excludedFriendIds])
+        return [...idsSelec].filter(id => !dejaInvites.has(id as string)).length
+    }, [idsSelec, invites, excludedFriendIds])
+    // Existing event: invited right away. Event being created: only added to the draft.
+    const urlInvitation = Array.isArray(inviterUrl) ? inviterUrl[0] : inviterUrl
+    const inviteDirect = !!urlInvitation && urlInvitation !== 'undefined'
+
+    const inviteAndDismiss = useCallback(() => {
+        const amisSelec = amis.filter(ami => idsSelec.has(ami.id))
+        // A route param can arrive as the text "undefined": no URL then (event
+        // being created, invitations sent with it). Philip — user story 8.
+        const url = Array.isArray(inviterUrl) ? inviterUrl[0] : inviterUrl
+        onPressSelect(amisSelec, url && url !== 'undefined' ? url : undefined)
+    }, [amis, idsSelec, inviterUrl, onPressSelect])
 
     useEffect(() => {
         if (!select) return
@@ -184,26 +202,16 @@ function EventListAmiContent() {
         }
     }, []))
 
+
+
     return (
-        <ModalBase>
+        // no ✓ in full screen: the Invite button below does its job
+        <ModalBase afficherBoutonPleinEcran={!select}>
             <View style={{ height: '100%', width: '100%' }}>
                 <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center' }}>
                     <View style={{ width: '100%', alignItems: 'center' }}>
                         <Text style={{ color: colors.text, fontFamily: fonts.body, fontSize: 20 }}>{t('list.title')}</Text>
                     </View>
-                    {select &&
-                        <TouchableOpacity style={{ position: 'absolute', right: 16 }}
-                            onPress={() => {
-                                const amisSelec = amis.filter(ami => idsSelec.has(ami.id))
-                                // A route param can arrive as the text "undefined": no URL then (event
-                                // being created, invitations sent with it). Philip — user story 8.
-                                const url = Array.isArray(inviterUrl) ? inviterUrl[0] : inviterUrl
-                                onPressSelect(amisSelec, url && url !== 'undefined' ? url : undefined)
-                                modalEvents.emitClosing()
-                            }}>
-                            <Text style={{ color: colors.text, fontFamily: fonts.body, fontSize: 16 }}>{t('list.invite')}</Text>
-                        </TouchableOpacity>
-                    }
                 </View>
                 <LinearGradient
                     style={{ position: 'absolute', opacity: 0.3, zIndex: 2, top: 22, left: 0, width: '100%', height: 24 }}
@@ -276,6 +284,37 @@ function EventListAmiContent() {
                         )
                     }}
                 />}
+                {/* Confirm button, always visible: it replaces the ✓ of the full screen modal.
+                    Closing the modal another way (tap outside, swipe down) cancels. */}
+                {select && amis.length > 0 && (
+                    <View style={{ paddingTop: 8, paddingBottom: 12 }}>
+                        <TouchableOpacity
+                            disabled={nbSelectionnes === 0}
+                            onPress={() => {
+                                inviteAndDismiss()
+                                modalEvents.emitClosing()
+                            }}
+                            accessibilityRole="button"
+                            accessibilityState={{ disabled: nbSelectionnes === 0 }}
+                            style={{
+                                height: 48,
+                                borderRadius: 12,
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                flexDirection: 'row',
+                                gap: 8,
+                                backgroundColor: nbSelectionnes > 0 ? colors.primary : colors.border,
+                            }}
+                        >
+                            {nbSelectionnes > 0 && <Ionicons name={inviteDirect ? 'paper-plane' : 'person-add'} size={18} color="white" />}
+                            <Text style={{ color: nbSelectionnes > 0 ? 'white' : colors.muted, fontFamily: fonts.title, fontSize: 16 }}>
+                                {nbSelectionnes === 0
+                                    ? t('list.pickFriends')
+                                    : t(inviteDirect ? 'list.inviteCount' : 'list.addCount', { count: nbSelectionnes })}
+                            </Text>
+                        </TouchableOpacity>
+                    </View>
+                )}
                 {amis.length < 1 &&
                     <View style={{ height: '100%', width: '100%', justifyContent: 'center', alignItems: 'center', gap: 8 }}>
                         <Text style={{ color: colors.text, fontFamily: fonts.title, fontSize: 18 }}>{t('list.emptyState')}</Text>

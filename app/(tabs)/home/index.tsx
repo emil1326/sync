@@ -8,24 +8,23 @@ import ouvrirDetailsEvenement from '@/functions/ouvrirDetailsEvenement';
 import { useNavFab } from '@/hooks/useNavFAB';
 import Ionicons from '@react-native-vector-icons/ionicons';
 import { router, useFocusEffect } from 'expo-router';
+import { DateTime } from 'luxon';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import Animated, { cancelAnimation, scrollTo, useAnimatedReaction, useAnimatedRef, useAnimatedStyle, useSharedValue, withDecay, withRepeat, withSpring, withTiming } from 'react-native-reanimated';
-
-import { DateTime } from 'luxon';
 
 import { Dimensions, Easing, Image, Keyboard, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { getCommonFreeSlotsSurPlage } from '@/functions/availability';
-import { heuresVersDate, positionHeures } from '@/functions/positionTimeline';
 import catcher from '@/functions/catcher';
 import { convertUTCToLocal } from '@/functions/convertirUTCenLocal';
 import log from '@/functions/log';
+import { heuresVersDate, positionHeures } from '@/functions/positionTimeline';
 
 
 import EventsList, { RETRAIT_RANGEE } from '@/components/eventsList';
-import ProfilPic from '@/components/pfp';
+import PfpWithAvailability from '@/components/pfpWithAvailability';
 import Spinner from '@/components/spinner';
 import Timeline from '@/components/timeline';
 import TrousHoraire, { PlageChoisie } from '@/components/trousHoraire';
@@ -40,11 +39,11 @@ import { withSpringConfig } from '@/constants/ReanimatedConfs';
 import { calendrierEvents } from '@/events/calendrierEvents';
 import { rechercheAmiEvents } from '@/events/rechercheAmiEvents';
 import AutoRefresh from '@/functions/autoRefresh';
+import { convertirTimestampHeure } from '@/functions/convertirTimestamp';
 import { estJourFerie, formaterEvenementsMembre, joursFeriesDuJour, paramsPlage } from '@/functions/evenementsMembre';
 import { debutCreationPourJour, estJourPasse } from '@/functions/jourCreation';
 import { Friend } from '@/types/calendar';
 import { scheduleOnRN } from 'react-native-worklets';
-import { convertirTimestampHeure } from '@/functions/convertirTimestamp';
 
 //Constants
 const WIDTH_COL = 80;
@@ -55,6 +54,8 @@ const HEIGHT_TIMELINE = 32;
 const LARGEUR_HEURE_MAINTENANT = 44;
 const AnimatedStyleMinVal = 0.1
 const LIST_HEIGHT = 104
+/** Friends' rows loaded at a time: 10 more each time the rows are scrolled to the bottom */
+const AMIS_PAR_PAGE = 10
 // Height of the floating back-to-now button.
 const HAUTEUR_RETOUR = 34
 // Max events per request in the month view (the API defaults to 20, too few for a month).
@@ -146,6 +147,15 @@ export default function Home() {
   const [texteRecherche, setTexteRecherche] = useState('')
   // The search the friends' requests use (the text, trimmed).
   const rechercheRef = useRef('')
+  // Friends asked for (10, 20, 30...): the API sends that many rows and whether there are
+  // more (plus_amis). The whole list is asked again each time, so the regular refresh
+  // keeps every loaded row up to date.
+  const nbAmisDemandesRef = useRef(AMIS_PAR_PAGE)
+  const plusAmisRef = useRef(false)
+  const chargementPlusRef = useRef(false)
+  const [chargementPlusAmis, setChargementPlusAmis] = useState(false)
+  // rows loaded, read on the UI thread (see the reaction on offsetY)
+  const nbAmisCharges = useSharedValue(0)
   // The search the last friends' answer was for: "no result" waits for it.
   const [rechercheRepondue, setRechercheRepondue] = useState('')
   // Every friend (last answer without a search): shown again at once on closing.
@@ -163,6 +173,7 @@ export default function Home() {
    */
   const paramsAmis = (debut: DateTime) => ({
     ...paramsPlage(debut, debut.plus({ days: JOURS_FENETRE })),
+    limiteAmi: nbAmisDemandesRef.current,
     ...(rechercheRef.current ? { recherche: rechercheRef.current } : {}),
   })
 
@@ -184,6 +195,8 @@ export default function Home() {
     const recherche = texte.trim()
     if (recherche === rechercheRef.current) return
     rechercheRef.current = recherche
+    // a new search starts from its first 10 friends again
+    nbAmisDemandesRef.current = AMIS_PAR_PAGE
     friendsEventsRefresh.current?.setParams(paramsAmis(windowStartRef.current))
   }
 
@@ -379,7 +392,8 @@ export default function Home() {
         : Number.POSITIVE_INFINITY
       return { ami, commonFreeSlots, minutesCommunes, prochaineDisponibilite }
     }).sort((a, b) =>
-      b.minutesCommunes - a.minutesCommunes
+      Number(!!b.ami.proche) - Number(!!a.ami.proche)
+      || b.minutesCommunes - a.minutesCommunes
       || a.prochaineDisponibilite - b.prochaineDisponibilite
       || String(a.ami.pseudo ?? '').localeCompare(String(b.ami.pseudo ?? ''))
     )
@@ -579,6 +593,10 @@ export default function Home() {
 
       setJourAmis(windowStartRef.current)
       setFriends(amisFinal)
+      nbAmisCharges.set(amisFinal.length)
+      plusAmisRef.current = !!data.plus_amis
+      chargementPlusRef.current = false
+      setChargementPlusAmis(false)
       // User story 22: which search this answer is for (see aucunResultat), and every
       // friend kept when there was none.
       setRechercheRepondue(rechercheRef.current)
@@ -587,6 +605,20 @@ export default function Home() {
       setChargementEchec(true)
       catcher(error, t('errors.formatFriendEvents'))
     }
+  }
+
+  /**
+   * The rows were scrolled near the bottom: asks for 10 more friends (if there are more,
+   * and not already asking). The answer replaces the rows with the longer list.
+   *
+   * @returns {void}
+   */
+  const chargerPlusAmis = () => {
+    if (!plusAmisRef.current || chargementPlusRef.current) return
+    chargementPlusRef.current = true
+    setChargementPlusAmis(true)
+    nbAmisDemandesRef.current += AMIS_PAR_PAGE
+    friendsEventsRefresh.current?.setParams(paramsAmis(windowStartRef.current))
   }
 
   // ── Handlers ──
@@ -648,7 +680,8 @@ export default function Home() {
     const enCache = cacheJoursRef.current.get(`${start.toISODate()}/${fin.toISODate()}`)
     if (!enCache) return
     setUserEvents(enCache);
-      setJourMembre(start);
+    // same day: the same object, so nothing redraws for it
+    setJourMembre((jour) => (jour?.hasSame(start, 'day') ? jour : start));
   };
 
   /**
@@ -851,6 +884,18 @@ export default function Home() {
           scrollTo(friendsList, 0, offset, false)
   )
 
+  // Near the bottom of the rows (2 rows left, or all of them fit on screen): 10 more
+  // friends. Asked again after each answer while still there (nbAmisCharges changes).
+  useAnimatedReaction(
+    () => {
+      const presDuBas = offsetY.get() >= maxY.get() - 2 * (LIST_HEIGHT + 4)
+      return presDuBas ? nbAmisCharges.get() : -1
+    },
+    (actuel, precedent) => {
+      if (actuel >= 0 && actuel !== precedent) scheduleOnRN(chargerPlusAmis)
+    }
+  )
+
   useAnimatedReaction(
     () => {
       const cellule = pxHeures + L_HEURES
@@ -891,6 +936,19 @@ export default function Home() {
   // event covers it (e.g. the one just created on it), it's dropped when the member's
   // events arrive (modifierEvenementsMembreFetched).
 
+  // Leaving the screen (another tab, a pushed screen): polling paused, not destroyed, so
+  // coming back only asks the server what changed.
+  function pauseALaSortie() {
+    // This screen's exact position, given back on return (it was only recorded when
+    // the displayed day changed, so coming back from e.g. the creation jumped to an
+    // older position, away from a range picked on the same day).
+    if (accueilActifRef.current) offsetAccueilRef.current = offsetX.get()
+    accueilActifRef.current = false
+    accueilActif.set(false)
+    userEventsRefresh.current?.stop()
+    friendsEventsRefresh.current?.stop()
+  }
+
   useFocusEffect(
     useCallback(() => {
       const now = DateTime.now();
@@ -907,15 +965,31 @@ export default function Home() {
       accueilActifRef.current = true
       accueilActif.set(true)
       fenetreEnCoursRef.current =`${debutFenetre.toISODate()}/${debutFenetre.plus({ days: JOURS_FENETRE }).toISODate()}`
-      setTodayDateTime(jourAffiche.startOf('day'));
-      setTempsClassement(now);
+      // Coming back to the tab: only what changed is updated, so the timeline doesn't
+      // redraw and re-rank every friend each time (same day → same object; the ranking
+      // by "time from now" is redone if it's over a minute old).
+      setTodayDateTime((jour) => (jour?.hasSame(jourAffiche, 'day') ? jour : jourAffiche.startOf('day')));
+      setTempsClassement((avant) => (now.diff(avant).as('seconds') < 60 ? avant : now));
       dateAujShared.set(jourAffiche.toMillis());
       jourDemandeRef.current = jourAffiche.startOf('day');
       afficherDepuisCache(jourAffiche);
       //chargerEvenements(now, now)
 
+      // Back on the tab: the pollers paused when it was left resume. Same query, so
+      // the server only sends the events again if something changed (before, both were
+      // rebuilt with a full reload each time, which re-ranked every friend).
+      const paramsMembre = paramsPlage(debutFenetre, debutFenetre.plus({ days: JOURS_FENETRE }))
+      if (userEventsRefresh.current && !userEventsRefresh.current.estArrete()
+        && friendsEventsRefresh.current && !friendsEventsRefresh.current.estArrete()) {
+        userEventsRefresh.current.reprendre(paramsMembre)
+        friendsEventsRefresh.current.reprendre(paramsAmis(debutFenetre))
+        return pauseALaSortie
+      }
+      userEventsRefresh.current?.destroy()
+      friendsEventsRefresh.current?.destroy()
+
       userEventsRefresh.current = new AutoRefresh(api, '/evenements/', {
-        extraParams: paramsPlage(debutFenetre, debutFenetre.plus({ days: JOURS_FENETRE })),
+        extraParams: paramsMembre,
         onData: modifierEvenementsMembreFetched,
         onError: (error) => {
           log("impossible de charger les évènements du membre", error)
@@ -936,18 +1010,15 @@ export default function Home() {
         }
       })      
 
-      return () => {
-        // This screen's exact position, given back on return (it was only recorded when
-        // the displayed day changed, so coming back from e.g. the creation jumped to an
-        // older position, away from a range picked on the same day).
-        if (accueilActifRef.current) offsetAccueilRef.current = offsetX.get()
-        accueilActifRef.current = false
-        accueilActif.set(false)
-        userEventsRefresh.current?.destroy()
-        friendsEventsRefresh.current?.destroy()
-      }
+      return pauseALaSortie
     }, [])
   );
+
+  // The screen is gone for good (sign-out...): the pollers too.
+  useEffect(() => () => {
+    userEventsRefresh.current?.destroy()
+    friendsEventsRefresh.current?.destroy()
+  }, [])
 
 
   const s = StyleSheet.create({
@@ -1158,6 +1229,11 @@ export default function Home() {
       alignItems: 'center',
       justifyContent: 'center',
     },
+    chargementPlusAmis: {
+      height: LIST_HEIGHT / 2,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
     calendarContainer: {
       flex:5
     },
@@ -1329,10 +1405,15 @@ export default function Home() {
                             onPress={() => router.push({ pathname: '/(tabs)/home/profil/[membreId]', params: { membreId: friend.id } })}
                           >
                           <View style={s.photoAmi}>
-                            <ProfilPic
-                              pfp={friend.fp_url}
-                              size={64}
-                            />
+                            <PfpWithAvailability pfp={friend.fp_url} size={64} statut={friend.statut_disponibilite} />
+                            {!!friend.proche && (
+                              <View
+                                accessibilityLabel={t('closeFriendBadge')}
+                                style={{ position: 'absolute', top: 5, right: 5, width: 24, height: 24, alignItems: 'center', justifyContent: 'center', borderRadius: 12, borderWidth: 1, borderColor: colors.warning, backgroundColor: colors.card }}
+                              >
+                                <Ionicons name="star" size={14} color={colors.warning} />
+                              </View>
+                            )}
                           </View>
                           </TouchableOpacity>
                           {/* Événements horizontaux */}
@@ -1350,6 +1431,12 @@ export default function Home() {
                           />
                         </View>                    
                       )})}
+                    {/* the next 10 friends on their way */}
+                    {chargementPlusAmis && (
+                      <View style={s.chargementPlusAmis}>
+                        <Spinner size={24} color={colors.muted} />
+                      </View>
+                    )}
                 </Animated.ScrollView>
             )}
           </Animated.View>        
@@ -1359,10 +1446,7 @@ export default function Home() {
             style={[loadingAnimated, s.memberZone, { backgroundColor: colors.card }]}
           >
               <View style={[s.column, { backgroundColor: colors.card }]}>
-                <ProfilPic
-                  size={64}
-                  pfp={membre.fp}
-                />
+                <PfpWithAvailability size={64} pfp={membre.fp} statut={membre.statutDisponibilite} />
               </View>    
               <View style={s.zoneTimelineMembre}>
                 <EventsList

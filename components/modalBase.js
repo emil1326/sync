@@ -1,7 +1,7 @@
 import { BlurView } from "expo-blur"
 import { LinearGradient } from "expo-linear-gradient"
 import { router } from "expo-router"
-import { useFocusEffect, useIsFocused } from "expo-router/react-navigation"
+import { useFocusEffect } from "expo-router/react-navigation"
 import React, { useEffect, useState } from "react"
 import { Keyboard, KeyboardAvoidingView, Platform, Pressable, StyleSheet, TouchableOpacity, View } from "react-native"
 import { Gesture, GestureDetector, GestureHandlerRootView } from "react-native-gesture-handler"
@@ -16,16 +16,20 @@ import { usePalette } from "@/contextes/contextePalette"
 
 import { withSpringConfig, withTimingConfig } from "@/constants/ReanimatedConfs"
 
+import { useModal } from "@/contextes/contexteModals"
 import { modalEvents } from "@/events/modalEvents"
 import Ionicons from "@react-native-vector-icons/ionicons"
-import { useModal } from "@/contextes/contexteModals"
 
-export default function ModalBase({ children, canDismiss = true, onDismiss = () => { } }){
+const noop = () => {}
+
+// afficherBoutonPleinEcran: the round button (✕ / ✓) shown when the modal is full screen;
+// false for a modal that has its own confirm button (friend picker).
+// boutonADroite: that button in the bottom right corner instead of the bottom left.
+export default function ModalBase({ children, canDismiss = true, onDismiss = noop, afficherBoutonPleinEcran = true, boutonADroite = false }){
     const { colors } = usePalette()
-    const {dismissButton} = useModal()
+    const {dismissButton, runDismissButtonAction} = useModal()
 
     const { fonts } = useFont()
-    const isFocused = useIsFocused()
     
     const s = StyleSheet.create({
         flexFill: {
@@ -37,10 +41,15 @@ export default function ModalBase({ children, canDismiss = true, onDismiss = () 
             flex:1
         },
 
+        // The whole screen behind the sheet: a tap anywhere outside the modal closes it.
+        // (55% high with no top, it was laid out at the bottom by justifyContent
+        // 'flex-end', under the sheet: tapping above the modal did nothing.)
         overlayPressable: {
             position: 'absolute',
-            height: '55%',
-            width: '100%',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
         },
         blurBackdrop: {
             zIndex: -1,
@@ -77,7 +86,7 @@ export default function ModalBase({ children, canDismiss = true, onDismiss = () 
             left: 0,
             right: 0,
             width: '100%',
-            height: 64,
+            height: 32,
         },
 
         dragHandleContainer: {
@@ -122,6 +131,8 @@ export default function ModalBase({ children, canDismiss = true, onDismiss = () 
             left: 16,
             backgroundColor: colors.error,
         },
+        optionsADroite: { justifyContent: 'flex-end' },
+        closeButtonADroite: { left: 0, marginRight: 16 },
         expandButton: {
             position: 'absolute',
             zIndex: 20,
@@ -170,12 +181,12 @@ export default function ModalBase({ children, canDismiss = true, onDismiss = () 
     const optionBottom = useSharedValue(-s.closeButton.height)
     const optionsOpacity = useSharedValue(1)
 
-    const dismissModalRoute = () => {
+    const dismissModalRoute = React.useCallback(() => {
         if (router.canDismiss() && canDismiss) {
             router.dismiss()
         }
         onDismiss?.()
-    }
+    }, [canDismiss, onDismiss])
 
     const LEVELS = [0, 45, 94]; // 0 = closed, 1 = 45, 2 = fullscreen
     const actualLevel = useSharedValue(1); // starts at 45%   
@@ -201,7 +212,9 @@ export default function ModalBase({ children, canDismiss = true, onDismiss = () 
         }
     })
 
-    const fermerModalBase = () => {
+    const closeButtonHeight = s.closeButton.height
+
+    const fermerModalBase = React.useCallback(() => {
         if (closing) return
         setClosing(true)
 
@@ -210,9 +223,9 @@ export default function ModalBase({ children, canDismiss = true, onDismiss = () 
             if (finished) runOnJS(dismissModalRoute)()
         }));
         modalHeight.set(withSpring('0%', withSpringConfig));
-        optionBottom.set(withSpring(-s.closeButton.height, withSpringConfig));
+        optionBottom.set(withSpring(-closeButtonHeight, withSpringConfig));
         optionsOpacity.set(withTiming(0, withTimingConfig));
-    }
+    }, [closing, closeButtonHeight, dismissModalRoute, modalHeight, modalOpacity, opacityFlou, optionBottom, optionsOpacity])
 
     const panGesture = Gesture.Pan()
         .onChange((e) => {
@@ -245,6 +258,8 @@ export default function ModalBase({ children, canDismiss = true, onDismiss = () 
         });
         
     useFocusEffect(React.useCallback(() => {
+        if (closing) return
+
         const clavierAffiche = Keyboard.addListener("keyboardWillShow", () => {
             log("keyboard did show")
             setFullScreen(true)
@@ -270,7 +285,7 @@ export default function ModalBase({ children, canDismiss = true, onDismiss = () 
             clavierAffiche.remove()
             unsubscribe()
         }
-    }, [isFocused]))   
+    }, [actualLevel, closing, fermerModalBase, modalHeight, modalOpacity, opacityFlou]))
     
     useEffect(() => {
         log("fullscreen", fullScreen)
@@ -319,14 +334,17 @@ export default function ModalBase({ children, canDismiss = true, onDismiss = () 
             </Animated.View>
             </KeyboardAvoidingView>
             {/* Fullscreen options */}
-            <Animated.View style={[optionsAgrandirAnime, s.optionsRow]}>
+            {afficherBoutonPleinEcran && <Animated.View style={[optionsAgrandirAnime, s.optionsRow, boutonADroite && s.optionsADroite]}>
                 <TouchableOpacity 
-                    onPress={() => fermerModalBase()}
-                    style={[s.circleButtonBase, s.closeButton, {backgroundColor:dismissButton.bgColor}, dismissButton.style]}
+                        onPress={() => {
+                            runDismissButtonAction()
+                            fermerModalBase()
+                        }}
+                    style={[s.circleButtonBase, s.closeButton, boutonADroite && s.closeButtonADroite, {backgroundColor:dismissButton.bgColor}, dismissButton.style]}
                 >
                         <Ionicons name={dismissButton.icon} size={40} color={colors.text} />
                 </TouchableOpacity>
-            </Animated.View>
+            </Animated.View>}
             </View>
         </GestureHandlerRootView>
     )         

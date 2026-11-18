@@ -42,6 +42,12 @@ yarn-error.*
 
 # test coverage
 coverage/
+
+#agentic coding
+.agents/skills/*/rules
+.agents/skills/*/lib
+.agents/skills/*/scripts
+.agents/skills/*/references
  
 # agentic coding
 .agents/*

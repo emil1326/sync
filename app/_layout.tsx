@@ -20,31 +20,31 @@ import { Accelerometer } from 'expo-sensors';
 import * as SplashScreen from 'expo-splash-screen';
 import { View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import 'react-native-reanimated';
+import {
+  configureReanimatedLogger,
+  ReanimatedLogLevel,
+} from 'react-native-reanimated';
 
 //Components
 import Toast from 'react-native-toast-message';
 
 //Functions
 import ChargementEcran from '@/components/chargementEcran';
+import RequestStatus from '@/components/requestStatus';
+import { toastConfig } from '@/constants/toastConfig';
 import { AuthProvider, useAuth } from '@/contextes/contexteAuth';
 import { ConversationsProvider } from '@/contextes/contexteConversations';
+import { EventDraftProvider } from '@/contextes/contexteEventDraft';
 import { GestionScrollProvider } from '@/contextes/contexteGestionListes';
 import { InvitesProvider } from '@/contextes/contexteInvites';
 import { MockModeProvider } from '@/contextes/contexteMockMode';
 import { NotificationProvider } from '@/contextes/contexteNotifications';
 import { SettingsProvider, useSettings } from '@/contextes/contexteSettings';
-import { TimelineProvider } from '@/contextes/contexteTimeline';
-import {
-  configureReanimatedLogger,
-  ReanimatedLogLevel,
-} from 'react-native-reanimated';
-
-import RequestStatus from '@/components/requestStatus';
-import { toastConfig } from '@/constants/toastConfig';
-import { EventDraftProvider } from '@/contextes/contexteEventDraft';
 import { SignalementsProvider } from '@/contextes/contexteSignalements';
+import { TimelineProvider } from '@/contextes/contexteTimeline';
 import { initLocalization } from '@/locales/initLocale';
+import { configurerAffichagePremierPlan } from '@/functions/notificationsPush';
+import useNotificationsPush from '@/hooks/useNotificationsPush';
 
 // This is the default configuration
 configureReanimatedLogger({
@@ -55,6 +55,9 @@ configureReanimatedLogger({
 export { ErrorBoundary } from 'expo-router';
 
 SplashScreen.preventAutoHideAsync();
+
+// User story 45: in the foreground, a push is shown as the app's toast, not as a system alert.
+configurerAffichagePremierPlan();
 
 export default function RootLayout() {
   return (
@@ -111,7 +114,7 @@ function AppLoader() {
   useEffect(() => {
     if (!settingsLoaded) return;
     initLocalization(settings.language).finally(() => setLocaleLoaded(true));
-  }, [settingsLoaded]);
+  }, [settingsLoaded, settings.language]);
 
   useEffect(() => {
     if (fontsLoaded && localeLoaded) SplashScreen.hideAsync();
@@ -130,6 +133,9 @@ function RootLayoutNav() {
   const { navTheme } = usePalette();
   const { state } = useAuth()
   const pathname = usePathname()
+  // User story 45: push registration, toast of a push received while the app is open,
+  // and opening a tapped notification.
+  useNotificationsPush()
 
   useEffect(() => {
     if (state !== 'authenticated') return
@@ -166,46 +172,7 @@ function RootLayoutNav() {
     }
   }, [pathname, state])
 
-  /* const enregistrerPushToken = async (accessToken: string)=>{
-    
-    if(!Device.isDevice){
-      alert('notifications push requièrent un appareil physique')
-      return
-    }
-
-    const {status: statusExistant} = await Notifs.getPermissionsAsync()
-    let statusFinal = statusExistant
-
-    if(statusExistant !== 'granted'){
-      const {status} = await Notifs.requestPermissionsAsync()
-      statusFinal = status
-    }
-
-    if(statusFinal !== 'granted'){
-      alert('permission aux notifications push non-accordée')
-      return
-    }
-
-    const pushToken = (await Notifs.getExpoPushTokenAsync()).data
-    //log('pushToken', pushToken)
-
-    try {
-      await api.post('/notifications/push_token', 
-        {
-          push_token: pushToken
-        },
-        {
-          headers:{
-            'Authorization':`Bearer ${accessToken}`
-          }
-        }
-      )
-      return true
-    } catch (error) {
-      catcher(error, 'problème survenu lors de l\'ouverture')
-      return false
-    }
-  } */
+  // Push registration: see enregistrerPushToken (functions/notificationsPush), called by useNotificationsPush.
 
   if (state === 'loading') {
     return <ChargementEcran />;
@@ -241,9 +208,9 @@ function RootLayoutNav() {
           <Stack.Screen name="(auth)" options={{ headerShown: false }} />
         </Stack.Protected>
       </Stack>
-      <RequestStatus />
-      <Toast config={toastConfig}/>
+      <RequestStatus />      
       </View>
+      <Toast config={toastConfig}/>
     </ThemeProvider>
   );
 }
