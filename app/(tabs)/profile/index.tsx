@@ -2,9 +2,9 @@ import Icon from "@react-native-vector-icons/ionicons";
 import * as Brightness from 'expo-brightness';
 import { router } from 'expo-router';
 import { useFocusEffect, useIsFocused } from "expo-router/react-navigation";
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ActivityIndicator, Alert, Dimensions, ImageSourcePropType, Modal, Pressable, StyleSheet, Text, TouchableOpacity, useColorScheme, View, ViewStyle } from 'react-native';
+import { ActivityIndicator, Alert, Dimensions, Modal, Pressable, StyleSheet, Text, TouchableOpacity, View, ViewStyle } from 'react-native';
 import Animated, { createAnimatedComponent, interpolate, useAnimatedProps, useAnimatedStyle, useSharedValue, withDelay, withSpring, withTiming } from 'react-native-reanimated';
 import { interpolatePath, parse } from 'react-native-redash';
 import Svg, { Path } from 'react-native-svg';
@@ -12,7 +12,6 @@ import Svg, { Path } from 'react-native-svg';
 import { path1 as closeMenuPath1, path2 as closeMenuPath2, path3 as closeMenuPath3 } from '@/svgs/closeMenu';
 import { path1 as hamburgerMenuPath1, path2 as hamburgerMenuPath2, path3 as hamburgerMenuPath3 } from '@/svgs/hamburgerMenu';
 
-import { useAPI } from '@/contextes/contexteAPI';
 import { useFont } from '@/contextes/contexteFont';
 import { useMembre } from '@/contextes/contexteMembre';
 import { usePalette } from '@/contextes/contextePalette';
@@ -24,7 +23,6 @@ import ChooseImage from '@/functions/choisirImage';
 
 import { useActionFab } from '@/hooks/useActionFAB';
 
-import { FPType, isFpObject } from '@/types/pfp';
 
 import Haptics from '@/abstractions/haptics';
 import MemberCode from '@/components/memberCode';
@@ -35,29 +33,25 @@ import PfpWithAvailability from "@/components/pfpWithAvailability";
 const MENU_OPTIONS_GAP = 8
 const FLOATING_BTN_HEIGHT = 64
 
+// Created once, outside the component (created during render, they were new components
+// on every render, which resets them)
+const AnimatedTouchableOpacity = createAnimatedComponent(TouchableOpacity)
+const AnimatedPath = createAnimatedComponent(Path)
+
 export default function ProfilEcran(){
     const { t } = useTranslation('profile')
     const { colors } = usePalette()
     const { fonts } = useFont()
-    const colorScheme = useColorScheme()
 
     const isFocused = useIsFocused()
-    const { APIBaseURL } = useAPI()
     const { ajouterEcran } = useRouteAbs()
     const { membre, getMembre, patchStatutDisponibilite, patchProfil } = useMembre()
 
     const {height: WIN_H} = Dimensions.get('window') 
-    const icones = {        
-        profilDef:colorScheme === 'dark' ?require('@/assets/icones/profil-dark-icon.png'):require('@/assets/icones/profil-light-icon.png'),        
-    }    
-
-    const fpRef = useRef<FPType>(membre.fp)
-    
     const oldBrightness = useRef<number>(0)
     
     const [avertissementVisible, setAvertissementVisible] = useState(false)
     const [menuStatutVisible, setMenuStatutVisible] = useState(false)
-    const [, setFpSource] = useState<ImageSourcePropType>(icones.profilDef)
     const [hamburgerMenuOpen, setHamburgerMenuOpen] = useState<boolean>(false)
 
 //#region ValeursAnimé
@@ -71,7 +65,6 @@ export default function ProfilEcran(){
 
     const paramsOptionBottom = useSharedValue(0)
     const logOutOptionBottom = useSharedValue(0)
-    const importOptionBottom = useSharedValue(0) // stories #4 et #7 : importer un calendrier
     const adminOptionBottom = useSharedValue(0)
     const optionOpacity = useSharedValue(0)
 
@@ -83,15 +76,15 @@ export default function ProfilEcran(){
     const banniereAnimee = useAnimatedStyle(() => {
         "worklet"
         return{
-            height: banniereH.value,
-            opacity: opaciteAnime.value,
+            height: banniereH.get(),
+            opacity: opaciteAnime.get(),
         }
     })
     const infosMembreAnime = useAnimatedStyle<ViewStyle>(()=>{
         "worklet"
         return{
-            alignItems: infosMembreAlignItems.value,
-            opacity: opaciteInfosMembre.value
+            alignItems: infosMembreAlignItems.get(),
+            opacity: opaciteInfosMembre.get()
         }
     })
 
@@ -101,7 +94,7 @@ export default function ProfilEcran(){
     const pathProps1 = useAnimatedProps(() => {
         "worklet"
         return {
-            d: interpolatePath(hamburgerMenuOpenShared.value, [0, 1], [hamburgerMenuP1, closeMenuP1])
+            d: interpolatePath(hamburgerMenuOpenShared.get(), [0, 1], [hamburgerMenuP1, closeMenuP1])
         }
     })
 
@@ -111,7 +104,7 @@ export default function ProfilEcran(){
     const pathProps2 = useAnimatedProps(() => {
         "worklet"
         return {
-            d: interpolatePath(hamburgerMenuOpenShared.value, [0, 1], [hamburgerMenuP2, closeMenuP2])
+            d: interpolatePath(hamburgerMenuOpenShared.get(), [0, 1], [hamburgerMenuP2, closeMenuP2])
         }
     })
 
@@ -121,48 +114,42 @@ export default function ProfilEcran(){
     const pathProps3 = useAnimatedProps(() => {
         "worklet"
         return {
-            d: interpolatePath(hamburgerMenuOpenShared.value, [0, 1], [hamburgerMenuP3, closeMenuP3])
+            d: interpolatePath(hamburgerMenuOpenShared.get(), [0, 1], [hamburgerMenuP3, closeMenuP3])
         }
     })
 
     const hamburgerMenuTriggerAnimated = useAnimatedStyle(() => {
         return {
-            backgroundColor:hamburgerMenuBg.value
+            backgroundColor:hamburgerMenuBg.get()
         }
     })
     
     //Hamburger menu options animated styles
     const paramsOptionAnimated = useAnimatedStyle(() => {
         return {
-            bottom: paramsOptionBottom.value,
-            opacity: optionOpacity.value
+            bottom: paramsOptionBottom.get(),
+            opacity: optionOpacity.get()
         }
     })
     const logOutOptionAnimated = useAnimatedStyle(() => {
         return {
-            bottom: logOutOptionBottom.value,
-            opacity: optionOpacity.value
-        }
-    })
-    const importOptionAnimated = useAnimatedStyle(() => {
-        return {
-            bottom: importOptionBottom.value,
-            opacity: optionOpacity.value
+            bottom: logOutOptionBottom.get(),
+            opacity: optionOpacity.get()
         }
     })
     const adminOptionAnimated = useAnimatedStyle(() => ({
-        bottom: adminOptionBottom.value,
-        opacity: optionOpacity.value
+        bottom: adminOptionBottom.get(),
+        opacity: optionOpacity.get()
     }))
     const backdropAnimated = useAnimatedStyle(() => {
         return {
-            opacity:interpolate(optionOpacity.value, [0, 1], [0, 0.5])
+            opacity:interpolate(optionOpacity.get(), [0, 1], [0, 0.5])
         }
     })
 
     const avertissementAnime = useAnimatedStyle(()=>{
         return{
-            opacity:opaciteAvertissement.value
+            opacity:opaciteAvertissement.get()
         }
     })
 
@@ -192,12 +179,12 @@ export default function ProfilEcran(){
         oldBrightness.current = await Brightness.getBrightnessAsync()
         if(oldBrightness.current <= minBrightness){
             setAvertissementVisible(true)
-            opaciteAvertissement.value = withTiming(1, {duration:500})
+            opaciteAvertissement.set(withTiming(1, {duration:500}))
         }
             
         setTimeout(async ()=>{            
             if(oldBrightness.current <= minBrightness){
-                opaciteAvertissement.value = withTiming(0, {duration:500})
+                opaciteAvertissement.set(withTiming(0, {duration:500}))
                 await Brightness.setBrightnessAsync(minBrightness)
             }
             router.push({ pathname: '/(modals)/ajouterAmi', params: { contexte: 'qrCode' } })
@@ -230,15 +217,14 @@ export default function ProfilEcran(){
     const toggleHamburgerMenu = () => {   
         const isOpen = !hamburgerMenuOpen
         setHamburgerMenuOpen(isOpen)
-        hamburgerMenuOpenShared.value = withTiming(isOpen ? 1 : 0)
-        hamburgerMenuBg.value = withTiming(isOpen ? 'transparent' : colors.primary, withTimingConfig)
+        hamburgerMenuOpenShared.set(withTiming(isOpen ? 1 : 0))
+        hamburgerMenuBg.set(withTiming(isOpen ? 'transparent' : colors.primary, withTimingConfig))
         // (editing the profile is now a button on the profile card, not in this menu)
         // log out closest to the menu button, settings above it
-        logOutOptionBottom.value = withDelay(0, withSpring(isOpen ? FLOATING_BTN_HEIGHT + MENU_OPTIONS_GAP : 0, withSpringConfig))
-        paramsOptionBottom.value = withDelay(40, withSpring(isOpen ? (FLOATING_BTN_HEIGHT + MENU_OPTIONS_GAP) * 2 : 0, withSpringConfig))
-        importOptionBottom.value = withDelay(80, withSpring(isOpen ? (FLOATING_BTN_HEIGHT + MENU_OPTIONS_GAP) * 3 : 0, withSpringConfig))
-        adminOptionBottom.value = withDelay(80, withSpring(isOpen ? (FLOATING_BTN_HEIGHT + MENU_OPTIONS_GAP) * 3 : 0, withSpringConfig))
-        optionOpacity.value = withDelay(isOpen ? 0 : 160, withTiming(isOpen ? 1 : 0, withTimingConfig))
+        logOutOptionBottom.set(withDelay(0, withSpring(isOpen ? FLOATING_BTN_HEIGHT + MENU_OPTIONS_GAP : 0, withSpringConfig)))
+        paramsOptionBottom.set(withDelay(40, withSpring(isOpen ? (FLOATING_BTN_HEIGHT + MENU_OPTIONS_GAP) * 2 : 0, withSpringConfig)))
+        adminOptionBottom.set(withDelay(80, withSpring(isOpen ? (FLOATING_BTN_HEIGHT + MENU_OPTIONS_GAP) * 3 : 0, withSpringConfig)))
+        optionOpacity.set(withDelay(isOpen ? 0 : 160, withTiming(isOpen ? 1 : 0, withTimingConfig)))
         
         setTimeout(() => Haptics.click(), 0 + SPRING_DURATION_ESTIMATE)
         setTimeout(() => Haptics.clickLeger(), 40 + SPRING_DURATION_ESTIMATE)
@@ -270,10 +256,6 @@ export default function ProfilEcran(){
         }
     })
 
-    useEffect(()=>{
-        setFpSource({ uri: `${membre.fp}` })
-    }, [membre.fp])
-
     useFocusEffect(
         React.useCallback(() => {
             ajouterEcran('profil')
@@ -283,25 +265,13 @@ export default function ProfilEcran(){
                 getMembre()
             
             //getWidgetsMembre()
-
-            if (membre.fp) {
-                setFpSource({ uri: `${APIBaseURL}/${membre.fp}` });
-            } else if (isFpObject(membre.fp)) {
-                const current = fpRef.current;
-                if (isFpObject(current)) {
-                    setFpSource({ uri: current.uri });
-                }
-            } else {
-                setFpSource(icones.profilDef)
-            }
-
-            return () => {             
-                
-            };
+            // (the photo is shown by PfpWithAvailability from membre.fp: the unused
+            // local copy of it was removed)
+        // only when the screen gets the focus: with membre in the deps, getMembre (which
+        // changes membre) could run again and again while a field stays empty
+        // eslint-disable-next-line react-hooks/exhaustive-deps
         }, [isFocused])
     );
-    const AnimatedTouchableOpacity = createAnimatedComponent(TouchableOpacity)
-    const AnimatedPath = createAnimatedComponent(Path)
 
 //#region StyleSheet
     const s = StyleSheet.create({   
