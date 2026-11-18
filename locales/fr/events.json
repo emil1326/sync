@@ -198,6 +198,7 @@
     "title": "Album photo",
     "seeAll": "Tout voir",
     "add": "Ajouter des photos",
+    "addSelected": "Ajouter à l'album ({{count}})",
     "empty": "Aucune photo pour l'instant. Partage celles de l'évènement !",
     "open": "Photo de {{pseudo}}",
     "close": "Fermer",

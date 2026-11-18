@@ -11,10 +11,11 @@ import {
     ajouterPhotosEvenement, changerApprobationAlbum, chargerAlbumEvenement, deciderPhotosEvenement, supprimerPhotoEvenement,
 } from '@/functions/photosEvenement'
 import { AlbumEvenement, PhotoEvenement } from '@/types/albumEvenement'
+import type { PhotoAEnvoyer } from '@/components/selecteurPhotos'
 
 /**
  * An event's shared album: loaded each time the screen is shown; photos added (picked
- * several at once; waiting for approval when the member isn't an admin), accepted or
+ * with the app's photo picker; waiting for approval when the member isn't an admin), accepted or
  * refused by an admin, deleted (after a confirmation); the approval turned on or off.
  * Used by the album block of the event page and by the album screen.
  *
@@ -39,11 +40,13 @@ export default function useAlbumEvenement(idEvenement: string | undefined) {
         recharger().catch((error) => catcher(error, t('album.loadFailed')))
     }, [recharger, t]))
 
-    const ajouter = useCallback(async () => {
-        if (!idEvenement || envoi) return
+    /** Uploads the picked photos; true once they're in (the picker can then be emptied). */
+    const ajouter = useCallback(async (aEnvoyer: PhotoAEnvoyer[]) => {
+        if (!idEvenement || envoi || aEnvoyer.length === 0) return false
+        setEnvoi(true)
         try {
-            const { photos, enAttente } = await ajouterPhotosEvenement(api, idEvenement, () => setEnvoi(true))
-            if (photos.length === 0) return
+            const { photos, enAttente } = await ajouterPhotosEvenement(api, idEvenement, aEnvoyer)
+            if (photos.length === 0) return false
             setAlbum((a) => a && (enAttente
                 ? { ...a, enAttente: [...photos, ...a.enAttente] }
                 : { ...a, photos: [...photos, ...a.photos] }))
@@ -51,8 +54,10 @@ export default function useAlbumEvenement(idEvenement: string | undefined) {
                 type: toastTypes.success,
                 text2: t(enAttente ? 'album.sentForApproval' : 'album.added', { count: photos.length }),
             })
+            return true
         } catch (error) {
             catcher(error, t('album.addFailed'))
+            return false
         } finally {
             setEnvoi(false)
         }

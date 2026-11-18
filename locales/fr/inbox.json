@@ -2,7 +2,7 @@
 	"title": "Messages",
 	"newMessage": "Nouveau message",
 	"list": {
-		"empty": "Aucune conversation pour l'instant. Touche ✏️ ou + pour écrire à un ami."
+		"empty": "Aucune conversation pour l'instant. Touche + pour écrire à un ami."
 	},
 	"requests": {
 		"title": "Demandes d'ami",
@@ -18,6 +18,9 @@
 		"admin": "Organisateur",
 		"you": "toi",
 		"openProfile": "Voir le profil de {{pseudo}}",
+		"profile": "Profil",
+		"viewProfile": "Voir le profil",
+		"deleteForMe": "Supprimer la conversation",
 		"createdOn": "Conversation créée le {{date}}",
 		"eventGroup": "Groupe de discussion de « {{titre}} »",
 		"open": "Infos de la conversation {{nom}}",
@@ -38,6 +41,16 @@
 		"remove": "Retirer la photo",
 		"add": "Ajouter des photos",
 		"counter": "{{index}} / {{total}}"
+	},
+	"gallery": {
+		"title": "Photos",
+		"count": "{{count}} / {{max}}",
+		"cancel": "Annuler",
+		"done": "OK",
+		"limited": "Sync voit seulement les photos que tu as choisies.",
+		"manage": "Modifier",
+		"empty": "Aucune photo",
+		"prepareFailed": "Impossible de préparer les photos"
 	},
 	"seenBy": "Vu par {{noms}}",
 	"preview": {

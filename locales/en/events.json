@@ -198,6 +198,7 @@
     "title": "Photo album",
     "seeAll": "See all",
     "add": "Add photos",
+    "addSelected": "Add to the album ({{count}})",
     "empty": "No photos yet. Share the event's photos!",
     "open": "Photo by {{pseudo}}",
     "close": "Close",

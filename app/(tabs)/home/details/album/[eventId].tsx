@@ -1,17 +1,19 @@
 import { Stack, useLocalSearchParams } from 'expo-router'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { ActivityIndicator, FlatList, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import Icon from '@react-native-vector-icons/ionicons'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import ImageChargement from '@/components/imageChargement'
 import SwitchAbs from '@/abstractions/switchAbs'
 import ApprobationsAlbum from '@/components/approbationsAlbum'
+import SelecteurPhotos, { type PhotoAEnvoyer, type SelecteurPhotosRef } from '@/components/selecteurPhotos'
 import VisionneusePhotos from '@/components/visionneusePhotos'
 import { useAPI } from '@/contextes/contexteAPI'
 import { useFont } from '@/contextes/contexteFont'
 import { usePalette } from '@/contextes/contextePalette'
-import { grouperParLot } from '@/functions/photosEvenement'
+import { grouperParLot, MAX_PHOTOS_PAR_ENVOI } from '@/functions/photosEvenement'
 import useAlbumEvenement from '@/hooks/useAlbumEvenement'
 import { PhotoEvenement } from '@/types/albumEvenement'
 
@@ -20,9 +22,10 @@ const ESPACE = 2
 
 /**
  * An event's whole shared album (opened from its page): every photo in a grid, most
- * recent first, + in the header to add some. One's own photos waiting for approval
- * come first, faded. An admin sees the photos to approve on top and can turn the
- * approval off. Tap a photo to see it full screen.
+ * recent first, + in the header to add some (the app's photo picker: the picked ones in
+ * a strip at the bottom, then "Add to the album"; opened right away with `ajouter=1`).
+ * One's own photos waiting for approval come first, faded. An admin sees the photos to
+ * approve on top and can turn the approval off. Tap a photo to see it full screen.
  */
 export default function AlbumEvenementEcran() {
     const { t } = useTranslation('events')
@@ -30,8 +33,23 @@ export default function AlbumEvenementEcran() {
     const { fonts } = useFont()
     const { APIBaseURL } = useAPI()
     const { width } = useWindowDimensions()
-    const { eventId } = useLocalSearchParams<{ eventId: string }>()
+    const { eventId, ajouter: ajouterAuDepart } = useLocalSearchParams<{ eventId: string, ajouter?: string }>()
     const { album, accessible, envoi, ajouter, decider, changerApprobation, supprimer } = useAlbumEvenement(eventId)
+    const { bottom } = useSafeAreaInsets()
+    // the photos picked to add, and the picker (the same as everywhere photos are added)
+    const [photosAAjouter, setPhotosAAjouter] = useState<PhotoAEnvoyer[]>([])
+    const [preparation, setPreparation] = useState(false)
+    const selecteur = useRef<SelecteurPhotosRef>(null)
+    const choisirPhotos = () => selecteur.current?.ouvrir()
+    const envoyerPhotos = async () => {
+        if (await ajouter(photosAAjouter)) setPhotosAAjouter([])
+    }
+
+    // + of the event page: the picker opens right away
+    useEffect(() => {
+        if (ajouterAuDepart === '1') selecteur.current?.ouvrir()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [])
     const [indexVu, setIndexVu] = useState<number | null>(null)
     const [lotRevu, setLotRevu] = useState<string | null>(null)
 
@@ -45,11 +63,11 @@ export default function AlbumEvenementEcran() {
 
     const options = useMemo(() => ({
         headerRight: () => (
-            <TouchableOpacity onPress={ajouter} disabled={envoi || !accessible} hitSlop={10} accessibilityRole="button" accessibilityLabel={t('album.add')}>
+            <TouchableOpacity onPress={choisirPhotos} disabled={envoi || !accessible} hitSlop={10} accessibilityRole="button" accessibilityLabel={t('album.add')}>
                 {envoi ? <ActivityIndicator color={colors.text} /> : <Icon name="add" size={28} color={colors.text} />}
             </TouchableOpacity>
         ),
-    }), [ajouter, envoi, accessible, colors.text, t])
+    }), [envoi, accessible, colors.text, t])
 
     // above the grid: an admin's approval switch and the photos to approve
     const entete = album?.estAdmin ? (
@@ -90,7 +108,7 @@ export default function AlbumEvenementEcran() {
                         <Text style={[s.vide, { color: colors.muted, fontFamily: fonts.body }]}>
                             {t(album.approbation && !album.estAdmin ? 'album.emptyWithApproval' : 'album.empty')}
                         </Text>
-                        <TouchableOpacity onPress={ajouter} disabled={envoi} style={[s.bouton, { backgroundColor: colors.primary }]} accessibilityRole="button">
+                        <TouchableOpacity onPress={choisirPhotos} disabled={envoi} style={[s.bouton, { backgroundColor: colors.primary }]} accessibilityRole="button">
                             {envoi ? <ActivityIndicator color="white" /> : <Icon name="add" size={20} color="white" />}
                             <Text style={{ color: 'white', fontFamily: fonts.title, fontSize: 16 }}>{t('album.add')}</Text>
                         </TouchableOpacity>
@@ -124,6 +142,35 @@ export default function AlbumEvenementEcran() {
         <View style={[s.page, { backgroundColor: colors.background }]}>
             <Stack.Screen options={options} />
             {contenu}
+            {/* The photos picked to add (with the + to change them), then "Add to the album" */}
+            <View
+                style={photosAAjouter.length > 0 || preparation
+                    ? [s.barreAjout, { backgroundColor: colors.card, borderTopColor: colors.border, paddingBottom: bottom + 8 }]
+                    : undefined}
+            >
+                <SelecteurPhotos
+                    ref={selecteur}
+                    photos={photosAAjouter}
+                    onChange={setPhotosAAjouter}
+                    max={MAX_PHOTOS_PAR_ENVOI}
+                    desactive={envoi}
+                    onPreparation={setPreparation}
+                />
+                {photosAAjouter.length > 0 && (
+                    <TouchableOpacity
+                        onPress={envoyerPhotos}
+                        disabled={envoi || preparation}
+                        accessibilityRole="button"
+                        accessibilityState={{ busy: envoi }}
+                        style={[s.bouton, s.boutonAjout, { backgroundColor: colors.primary, opacity: envoi || preparation ? 0.6 : 1 }]}
+                    >
+                        {envoi ? <ActivityIndicator color="white" /> : <Icon name="cloud-upload-outline" size={20} color="white" />}
+                        <Text style={{ color: 'white', fontFamily: fonts.title, fontSize: 16 }}>
+                            {t('album.addSelected', { count: photosAAjouter.length })}
+                        </Text>
+                    </TouchableOpacity>
+                )}
+            </View>
             <VisionneusePhotos
                 photos={grille}
                 indexDepart={indexVu}
@@ -158,6 +205,8 @@ const s = StyleSheet.create({
         borderRadius: 12,
     },
     enAttente: { opacity: 0.45 },
+    barreAjout: { paddingHorizontal: 12, paddingTop: 10, gap: 10, borderTopWidth: 1 },
+    boutonAjout: { justifyContent: 'center' },
     badge: {
         position: 'absolute',
         left: 6,

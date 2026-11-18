@@ -1,9 +1,10 @@
 import type { AxiosInstance } from 'axios'
-import * as ImagePicker from 'expo-image-picker'
+
+import type { PhotoAEnvoyer } from '@/components/selecteurPhotos'
 
 import { AlbumEvenement, LotEnAttente, PhotoEvenement } from '@/types/albumEvenement'
 
-/** Photos per upload (the picker stops there; the API accepts as many) */
+/** Photos per upload (the photo picker stops there; the API accepts as many) */
 export const MAX_PHOTOS_PAR_ENVOI = 20
 
 const base = (idEvenement: string) => `/evenements/${encodeURIComponent(idEvenement)}/photos`
@@ -33,33 +34,24 @@ export async function chargerAlbumEvenement(api: AxiosInstance, idEvenement: str
 }
 
 /**
- * Lets the member pick photos (several at once) and adds them to the event's album
- * (waiting for approval when the member isn't an admin and the approval is on).
+ * Adds the photos picked with the app's photo picker (SelecteurPhotos) to the event's
+ * album (waiting for approval when the member isn't an admin and the approval is on).
  *
  * @param {AxiosInstance} api
  * @param {string} idEvenement - Public id.
- * @param {() => void} [onEnvoi] - Called once photos were picked, before the upload (spinner).
- * @returns {Promise<{ photos: PhotoEvenement[], enAttente: boolean }>} Empty if nothing was picked.
+ * @param {PhotoAEnvoyer[]} photos - The picked photos.
+ * @returns {Promise<{ photos: PhotoEvenement[], enAttente: boolean }>}
  */
 export async function ajouterPhotosEvenement(
     api: AxiosInstance,
     idEvenement: string,
-    onEnvoi?: () => void,
+    photos: PhotoAEnvoyer[],
 ): Promise<{ photos: PhotoEvenement[], enAttente: boolean }> {
-    const resultat = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: 'images',
-        quality: 0.7,
-        allowsMultipleSelection: true,
-        selectionLimit: MAX_PHOTOS_PAR_ENVOI,
-        orderedSelection: true,
-    })
-    if (resultat.canceled || !resultat.assets?.length) return { photos: [], enAttente: false }
-    onEnvoi?.()
-
+    if (photos.length === 0) return { photos: [], enAttente: false }
     const form = new FormData()
-    resultat.assets.slice(0, MAX_PHOTOS_PAR_ENVOI).forEach((a, i) => {
-        const nom = a.fileName || a.uri.split('/').pop() || `photo-${i + 1}.jpg`
-        form.append('photos', { uri: a.uri, name: nom, type: a.mimeType || 'image/jpeg' } as any)
+    photos.slice(0, MAX_PHOTOS_PAR_ENVOI).forEach((p, i) => {
+        const nom = p.nomFichier || p.uri.split('/').pop() || `photo-${i + 1}.jpg`
+        form.append('photos', { uri: p.uri, name: nom, type: p.mimeType || 'image/jpeg' } as any)
     })
     const { data } = await api.post(base(idEvenement), form, {
         headers: { 'Content-Type': 'multipart/form-data' },
