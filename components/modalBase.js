@@ -40,10 +40,15 @@ export default function ModalBase({ children, canDismiss = true, onDismiss = noo
             flex:1
         },
 
+        // The whole screen behind the sheet: a tap anywhere outside the modal closes it.
+        // (55% high with no top, it was laid out at the bottom by justifyContent
+        // 'flex-end', under the sheet: tapping above the modal did nothing.)
         overlayPressable: {
             position: 'absolute',
-            height: '55%',
-            width: '100%',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
         },
         blurBackdrop: {
             zIndex: -1,
