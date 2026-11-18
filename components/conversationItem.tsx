@@ -1,4 +1,5 @@
 import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
+import { useTranslation } from 'react-i18next'
 
 import { usePalette } from '@/contextes/contextePalette'
 import { useFont } from '@/contextes/contexteFont'
@@ -17,12 +18,17 @@ type Props = {
 export default function ConversationItem({ conversation, onPress }: Props) {
     const { colors } = usePalette()
     const { fonts } = useFont()
+    const { t } = useTranslation('inbox')
 
     const { ami, dernierMessage, nonLus, evenementId } = conversation
 
     const apercu = dernierMessage
         ? dernierMessage.type === 'vocal'
-            ? 'message vocal'
+            ? t('preview.voice')
+            : dernierMessage.type === 'image'
+            ? t('preview.photo')
+            : dernierMessage.type === 'album'
+            ? t('preview.photos')
             : dernierMessage.contenu
         : 'aucun message pour le moment'
     return (
