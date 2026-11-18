@@ -2,6 +2,7 @@ import Container from "@/abstractions/container";
 
 import Separator, { isLast } from "@/components/listSeparator";
 
+import { useAPI } from "@/contextes/contexteAPI";
 import { useFont } from "@/contextes/contexteFont";
 import { usePalette } from "@/contextes/contextePalette";
 import { useSettings } from "@/contextes/contexteSettings";
@@ -16,6 +17,7 @@ import ServerStatus from "@/components/serverStatus";
 import SettingRow from "@/components/settingsRow";
 import { DEFAULT_HUE } from "@/constants/Colors";
 import log from "@/functions/log";
+import catcher from "@/functions/catcher";
 import * as Camera from 'expo-camera';
 import Constants from 'expo-constants';
 import * as Linking from 'expo-linking';
@@ -56,6 +58,20 @@ export default function Settings(){
     const {hue, setHue} = usePalette()
 
     const [permissions, setPermissions] = useState<Permissions>()
+    const { api } = useAPI()
+    // Show message text in push notifications (server side, GET/PATCH /notifications/preferences).
+    // undefined until loaded.
+    const [apercuMessages, setApercuMessages] = useState<boolean>()
+
+    const changerApercuMessages = async (actif: boolean) => {
+        setApercuMessages(actif)
+        try {
+            await api.patch('/notifications/preferences', { apercu_messages: actif })
+        } catch (error) {
+            setApercuMessages(!actif)
+            catcher(error, t('messagePreviewFailed'))
+        }
+    }
     const [, requestCameraPermission, getCameraPermission] = Camera.useCameraPermissions()
     const [localHue, setLocalHue] = useState<number>(hue)
 
@@ -202,6 +218,21 @@ export default function Settings(){
             ],
         },
         {
+            id: 'privacy',
+            titleKey: 'privacy',
+            type: 'section',
+            settings: [
+                {
+                    id: 'messagePreview',
+                    titleKey: 'messagePreview',
+                    type: 'toggle',
+                    value: apercuMessages ?? true,
+                    disabled: apercuMessages === undefined,
+                    onValueChange: changerApercuMessages,
+                },
+            ],
+        },
+        {
             id: 'exportData',
             titleKey: 'exportData',
             type: 'link',
@@ -251,7 +282,10 @@ export default function Settings(){
 
     useFocusEffect(useCallback(() => {
         getPermissions()
-    }, []))
+        api.get('/notifications/preferences')
+            .then(({ data }) => setApercuMessages(data?.apercu_messages !== false))
+            .catch((error) => log('préférences de notifications', error))
+    }, [api]))
 
     const s = StyleSheet.create({
         screen: {

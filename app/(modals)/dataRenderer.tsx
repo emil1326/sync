@@ -21,7 +21,7 @@ export default function DataRenderModal() {
     }, [content]);
 
     return (
-        <ModalBase afficherBoutonFermer={sansBoutonFermer !== '1'}>
+        <ModalBase afficherBoutonPleinEcran={sansBoutonFermer !== '1'}>
             <Text style={{ width: '100%', textAlign: 'center', fontSize: 24, letterSpacing: 0.8, fontFamily: fonts.title, color: colors.text }}>{title}</Text>
             <View style={{ flex:1, width:'100%', height:'100%', paddingHorizontal:20}}>
                 {content}
