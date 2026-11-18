@@ -6,7 +6,8 @@
     "calendar": "Calendar",
     "invitationReview": "Invitation schedules",
     "unavailability": "New unavailability",
-    "unavailabilityDetails": "Unavailability details"
+    "unavailabilityDetails": "Unavailability details",
+    "album": "Event album"
   },
   "creationPages": {
     "event": "Event",
@@ -192,5 +193,26 @@
     "notFreeMessage": "{{pseudos}}: not free then anymore",
     "confirmPropose": "Propose {{plage}}?",
     "confirm": "Confirm"
+  },
+  "album": {
+    "title": "Photo album",
+    "seeAll": "See all",
+    "add": "Add photos",
+    "empty": "No photos yet. Share the event's photos!",
+    "open": "Photo by {{pseudo}}",
+    "close": "Close",
+    "counter": "{{index}} / {{total}}",
+    "you": "You",
+    "delete": "Delete the photo",
+    "deleteTitle": "Delete this photo?",
+    "deleteMessage": "It will be removed from the album for everyone.",
+    "deleteConfirm": "Delete",
+    "cancel": "Cancel",
+    "deleteFailed": "Couldn't delete the photo",
+    "added_one": "{{count}} photo added to the album",
+    "added_other": "{{count}} photos added to the album",
+    "addFailed": "The photos couldn't be added",
+    "loadFailed": "Couldn't load the album",
+    "noAccess": "Only the event's members can see its album"
   }
 }

@@ -35,6 +35,10 @@ export default function HomeLayout() {
             <Stack.Screen
                 name="details/[eventId]" options={{headerBackVisible:true, headerBackButtonDisplayMode:'minimal', headerTitle:t('navigation.details')}}
             />
+            {/* An event's shared photo album (from its page) */}
+            <Stack.Screen
+                name="details/album/[eventId]" options={{headerBackVisible:true, headerBackButtonDisplayMode:'minimal', headerTitle:t('navigation.album')}}
+            />
             <Stack.Screen
                 name="edit/[event]" options={{headerBackVisible:true, headerBackButtonDisplayMode:'minimal', headerTitle:t('navigation.edit')}}
             />
