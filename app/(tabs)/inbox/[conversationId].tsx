@@ -38,6 +38,12 @@ export default function Conversation(){
     }
     const titreAffiche = conversation?.ami.pseudo ?? titre ?? ''
 
+    // Group conversation: more than one other member, a title or a linked event. Opened from
+    // an event before the list has it, the title param is enough to know it's a group.
+    const estGroupe = conversation
+        ? (conversation.participants?.length ?? 0) > 1 || !!conversation.titre || !!conversation.evenementId
+        : !!titre
+
     const listeRef = useRef<FlatList>(null)
     const conteneurRef = useRef<View>(null)
 
@@ -134,8 +140,14 @@ export default function Conversation(){
                 keyExtractor={(item) => item.id}
                 contentContainerStyle={{ paddingVertical: 12, flexGrow: 1 }}
                 keyboardShouldPersistTaps="handled"
-                renderItem={({ item }) => (
-                    <MessageBubble message={item} estDeMoi={item.auteurId === membre.idPublique} />
+                renderItem={({ item, index }) => (
+                    <MessageBubble
+                        message={item}
+                        estDeMoi={item.auteurId === membre.idPublique}
+                        groupe={estGroupe}
+                        // avatar and pseudo only on the last message of a run from the same person
+                        afficherAuteur={messages[index + 1]?.auteurId !== item.auteurId}
+                    />
                 )}
                 ListEmptyComponent={
                     <View style={styles.vide}>
