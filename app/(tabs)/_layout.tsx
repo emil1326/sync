@@ -86,9 +86,22 @@ export default function TabLayout() {
       />
 
       <Tabs.Screen
-        name="inbox"        
+        name="inbox"
+        // Messages tab pressed while in a conversation (or its info, a profile...): back to
+        // the conversations list, with the usual back animation. With `href`, the tab
+        // opened the inbox route again over the conversation, which acted strangely.
+        // Same fix as the home tab above.
+        listeners={({ navigation }) => ({
+          tabPress: (e) => {
+            const etatOnglets = navigation.getState()
+            const ongletInbox = etatOnglets.routes[etatOnglets.index]
+            const pileInbox = ongletInbox?.name === 'inbox' ? ongletInbox.state : undefined
+            if (!pileInbox?.key || (pileInbox.index ?? 0) === 0) return
+            e.preventDefault()
+            navigation.dispatch({ type: 'POP_TO_TOP', target: pileInbox.key })
+          },
+        })}
         options={{
-          href:'/(tabs)/inbox',
           title: t('common:tabs.inbox'),
           headerTitle:t('common:tabs.inboxTitle'),
           tabBarIcon: ({ color }) => <TabBarIcon name="chatbox-ellipses-outline" color={color} />,          
