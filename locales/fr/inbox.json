@@ -1,6 +1,9 @@
 {
 	"title": "Messages",
 	"newMessage": "Nouveau message",
+	"list": {
+		"empty": "Aucune conversation pour l'instant. Touche ✏️ ou + pour écrire à un ami."
+	},
 	"requests": {
 		"title": "Demandes d'ami",
 		"empty": "Aucune demande d'ami en attente."

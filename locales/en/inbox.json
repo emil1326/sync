@@ -1,6 +1,9 @@
 {
 	"title": "Messages",
 	"newMessage": "New message",
+	"list": {
+		"empty": "No conversations yet. Tap ✏️ or + to write to a friend."
+	},
 	"requests": {
 		"title": "Friend requests",
 		"empty": "You have no pending friend requests."

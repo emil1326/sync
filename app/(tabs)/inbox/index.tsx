@@ -41,9 +41,11 @@ export default function Inbox(){
         notification.type === 'demande_ami' && notification.statut_metier === 'en_attente'
     )
 
+    // each time the tab gets the focus (only then: ajouterEcran isn't guaranteed stable)
     useFocusEffect(useCallback(()=> {
         ajouterEcran('inbox')
         rafraichirConversations()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []))
 
     // le bouton "+" au centre de la barre d'onglets ouvre la liste d'amis pour écrire à quelqu'un
@@ -95,7 +97,7 @@ export default function Inbox(){
                 ListEmptyComponent={
                     <View style={styles.vide}>
                         <Text style={{ color: colors.muted, fontFamily: fonts.body, fontSize: 15, textAlign: 'center' }}>
-                            Aucune conversation pour l'instant. Touche + pour écrire à un ami.
+                            {t('list.empty')}
                         </Text>
                     </View>
                 }
