@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 
 import ToastAbs from '@/abstractions/toastAbs'
+import BoutonAjouterAmi, { RelationAmitie } from '@/components/boutonAjouterAmi'
 import ProfilPic from '@/components/pfp'
 import { toastTypes } from '@/constants/toastConfig'
 import { useAPI } from '@/contextes/contexteAPI'
@@ -24,7 +25,16 @@ type InfosConversation = {
     cree_le: string | null
     mon_role: 'editeur' | 'lecteur'
     evenement: { id: string, titre: string, debut: string, fin: string } | null
-    participants: { id: string, pseudo: string, fp_url: string | null, role: 'editeur' | 'lecteur', moi: boolean }[]
+    participants: {
+        id: string
+        pseudo: string
+        fp_url: string | null
+        role: 'editeur' | 'lecteur'
+        moi: boolean
+        /** friend or not: "add friend" button next to the others */
+        relation?: RelationAmitie
+        demande_id?: string | null
+    }[]
 }
 
 /**
@@ -206,6 +216,15 @@ export default function InfosConversationEcran() {
                                 </Text>
                                 {p.role === 'editeur' && groupe && <Text style={s.role}>{t('infos.admin')}</Text>}
                             </View>
+                            {!p.moi && p.relation && p.relation !== 'ami' && (
+                                <BoutonAjouterAmi
+                                    key={`${p.id}-${p.relation}`}
+                                    membreId={p.id}
+                                    relation={p.relation}
+                                    demandeId={p.demande_id}
+                                    compact
+                                />
+                            )}
                             {!p.moi && <Icon name="chevron-forward" size={20} color={colors.muted} />}
                         </>
                     )
