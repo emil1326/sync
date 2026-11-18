@@ -27,6 +27,8 @@ type ConversationsContextType = {
     nonLusTotal: number
     messages: Message[]
     conversationOuverte: string | undefined
+    /** id of the conversation whose messages have arrived at least once (vs still loading) */
+    messagesChargesPour: string | undefined
     ouvrirConversation: (conversationId: string) => void
     fermerConversation: () => void
     envoyerMessage: (conversationId: string, message: EnvoiMessage) => Promise<Message | undefined>
@@ -98,6 +100,7 @@ export function ConversationsProvider({ children }: { children: React.ReactNode 
     const [conversations, setConversations] = useState<Conversation[]>([])
     const [messages, setMessages] = useState<Message[]>([])
     const [conversationOuverte, setConversationOuverte] = useState<string | undefined>()
+    const [messagesChargesPour, setMessagesChargesPour] = useState<string | undefined>()
 
     // APIProvider recrée son instance axios à chaque rendu : on passe toujours par la plus récente,
     // sinon AutoRefresh garderait une vieille instance sans intercepteurs (donc sans token)
@@ -123,6 +126,7 @@ export function ConversationsProvider({ children }: { children: React.ReactNode 
             setConversations([])
             setMessages([])
             setConversationOuverte(undefined)
+            setMessagesChargesPour(undefined)
             return
         }
 
@@ -143,12 +147,13 @@ export function ConversationsProvider({ children }: { children: React.ReactNode 
     }, [state, apiStable])
 
     /* conversation ouverte */
+    // The messages are kept when the screen closes: emptying them made the chat go blank
+    // while it slid away, and reopening the same conversation now shows them right away.
     const fermerConversation = useCallback(() => {
         refreshMessages.current?.stop()
         refreshMessages.current = undefined
         idOuvertRef.current = undefined
         setConversationOuverte(undefined)
-        setMessages([])
     }, [])
 
     const ouvrirConversation = useCallback((conversationId: string) => {
@@ -156,7 +161,9 @@ export function ConversationsProvider({ children }: { children: React.ReactNode 
 
         idOuvertRef.current = conversationId
         setConversationOuverte(conversationId)
-        setMessages([])
+        // another conversation's messages: emptied (the screen also filters them out)
+        setMessages((ms) => (ms.length > 0 && ms[0].conversationId !== conversationId ? [] : ms))
+        setMessagesChargesPour((id) => (id === conversationId ? id : undefined))
 
         refreshMessages.current = new AutoRefresh(apiStable, `/conversations/${conversationId}/messages`, {
             intervalMs: INTERVALLE_MESSAGES_MS,
@@ -166,8 +173,11 @@ export function ConversationsProvider({ children }: { children: React.ReactNode 
                 if (idOuvertRef.current !== conversationId) return
                 const liste: MessageBrut[] = data?.messages ?? []
                 setMessages(liste.map((m) => convertirMessage(m, baseRef.current)))
-                // le serveur vient de marquer les messages comme lus
-                setConversations((cs) => cs.map((c) => (c.id === conversationId ? { ...c, nonLus: 0 } : c)))
+                setMessagesChargesPour(conversationId)
+                // le serveur vient de marquer les messages comme lus (nouvelle liste seulement si ça change)
+                setConversations((cs) => (cs.some((c) => c.id === conversationId && c.nonLus !== 0)
+                    ? cs.map((c) => (c.id === conversationId ? { ...c, nonLus: 0 } : c))
+                    : cs))
             },
             onError: (error) => {
                 log('erreur get messages', error?.message ?? error)
@@ -248,17 +258,21 @@ export function ConversationsProvider({ children }: { children: React.ReactNode 
 
     const nonLusTotal = useMemo(() => conversations.reduce((total, c) => total + (c.nonLus || 0), 0), [conversations])
 
-    const value: ConversationsContextType = {
+    // same object until something changes: every screen using the conversations
+    // (inbox list, tab badge...) no longer re-renders on each provider render
+    const value: ConversationsContextType = useMemo(() => ({
         conversations,
         nonLusTotal,
         messages,
         conversationOuverte,
+        messagesChargesPour,
         ouvrirConversation,
         fermerConversation,
         envoyerMessage,
         demarrerConversationAvecAmi,
         rafraichirConversations,
-    }
+    }), [conversations, nonLusTotal, messages, conversationOuverte, messagesChargesPour, ouvrirConversation,
+        fermerConversation, envoyerMessage, demarrerConversationAvecAmi, rafraichirConversations])
 
     return (
         <ConversationsContexte.Provider value={value}>

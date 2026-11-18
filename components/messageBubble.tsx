@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 import { useTranslation } from 'react-i18next'
 
@@ -22,7 +23,7 @@ type Props = {
     /** tapping the author's avatar or pseudo (opens their profile) */
     onPressAuteur?: () => void
 }
-export default function MessageBubble({message,estDeMoi,groupe = false,afficherAuteur = false,onPressAuteur}: Props){
+function MessageBubble({message,estDeMoi,groupe = false,afficherAuteur = false,onPressAuteur}: Props){
     const {colors} = usePalette()
     const {fonts} = useFont()
     const { t } = useTranslation('inbox')
@@ -102,6 +103,27 @@ export default function MessageBubble({message,estDeMoi,groupe = false,afficherA
     )
 }
 
+
+/**
+ * Re-renders a bubble only when what it shows changes: the list gets new message
+ * objects on every refresh, so most bubbles stay as they are.
+ * onPressAuteur isn't compared: it only opens the author's profile.
+ */
+function memesProps(avant: Props, apres: Props) {
+    const a = avant.message
+    const b = apres.message
+    return a.id === b.id
+        && a.lu === b.lu
+        && a.contenu === b.contenu
+        && a.audioUrl === b.audioUrl
+        && a.auteurPseudo === b.auteurPseudo
+        && a.auteurFpUrl === b.auteurFpUrl
+        && avant.estDeMoi === apres.estDeMoi
+        && avant.groupe === apres.groupe
+        && avant.afficherAuteur === apres.afficherAuteur
+}
+
+export default memo(MessageBubble, memesProps)
 
 const styles = StyleSheet.create({
     ligne: { width: '100%', paddingHorizontal: 12, marginVertical: 3 },
