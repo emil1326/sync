@@ -54,6 +54,8 @@ const HEIGHT_TIMELINE = 32;
 const LARGEUR_HEURE_MAINTENANT = 44;
 const AnimatedStyleMinVal = 0.1
 const LIST_HEIGHT = 104
+/** Friends' rows loaded at a time: 10 more each time the rows are scrolled to the bottom */
+const AMIS_PAR_PAGE = 10
 // Height of the floating back-to-now button.
 const HAUTEUR_RETOUR = 34
 // Max events per request in the month view (the API defaults to 20, too few for a month).
@@ -145,6 +147,15 @@ export default function Home() {
   const [texteRecherche, setTexteRecherche] = useState('')
   // The search the friends' requests use (the text, trimmed).
   const rechercheRef = useRef('')
+  // Friends asked for (10, 20, 30...): the API sends that many rows and whether there are
+  // more (plus_amis). The whole list is asked again each time, so the regular refresh
+  // keeps every loaded row up to date.
+  const nbAmisDemandesRef = useRef(AMIS_PAR_PAGE)
+  const plusAmisRef = useRef(false)
+  const chargementPlusRef = useRef(false)
+  const [chargementPlusAmis, setChargementPlusAmis] = useState(false)
+  // rows loaded, read on the UI thread (see the reaction on offsetY)
+  const nbAmisCharges = useSharedValue(0)
   // The search the last friends' answer was for: "no result" waits for it.
   const [rechercheRepondue, setRechercheRepondue] = useState('')
   // Every friend (last answer without a search): shown again at once on closing.
@@ -162,6 +173,7 @@ export default function Home() {
    */
   const paramsAmis = (debut: DateTime) => ({
     ...paramsPlage(debut, debut.plus({ days: JOURS_FENETRE })),
+    limiteAmi: nbAmisDemandesRef.current,
     ...(rechercheRef.current ? { recherche: rechercheRef.current } : {}),
   })
 
@@ -183,6 +195,8 @@ export default function Home() {
     const recherche = texte.trim()
     if (recherche === rechercheRef.current) return
     rechercheRef.current = recherche
+    // a new search starts from its first 10 friends again
+    nbAmisDemandesRef.current = AMIS_PAR_PAGE
     friendsEventsRefresh.current?.setParams(paramsAmis(windowStartRef.current))
   }
 
@@ -579,6 +593,10 @@ export default function Home() {
 
       setJourAmis(windowStartRef.current)
       setFriends(amisFinal)
+      nbAmisCharges.set(amisFinal.length)
+      plusAmisRef.current = !!data.plus_amis
+      chargementPlusRef.current = false
+      setChargementPlusAmis(false)
       // User story 22: which search this answer is for (see aucunResultat), and every
       // friend kept when there was none.
       setRechercheRepondue(rechercheRef.current)
@@ -587,6 +605,20 @@ export default function Home() {
       setChargementEchec(true)
       catcher(error, t('errors.formatFriendEvents'))
     }
+  }
+
+  /**
+   * The rows were scrolled near the bottom: asks for 10 more friends (if there are more,
+   * and not already asking). The answer replaces the rows with the longer list.
+   *
+   * @returns {void}
+   */
+  const chargerPlusAmis = () => {
+    if (!plusAmisRef.current || chargementPlusRef.current) return
+    chargementPlusRef.current = true
+    setChargementPlusAmis(true)
+    nbAmisDemandesRef.current += AMIS_PAR_PAGE
+    friendsEventsRefresh.current?.setParams(paramsAmis(windowStartRef.current))
   }
 
   // ── Handlers ──
@@ -849,6 +881,18 @@ export default function Home() {
       () => offsetY.get(),
       (offset) => 
           scrollTo(friendsList, 0, offset, false)
+  )
+
+  // Near the bottom of the rows (2 rows left, or all of them fit on screen): 10 more
+  // friends. Asked again after each answer while still there (nbAmisCharges changes).
+  useAnimatedReaction(
+    () => {
+      const presDuBas = offsetY.get() >= maxY.get() - 2 * (LIST_HEIGHT + 4)
+      return presDuBas ? nbAmisCharges.get() : -1
+    },
+    (actuel, precedent) => {
+      if (actuel >= 0 && actuel !== precedent) scheduleOnRN(chargerPlusAmis)
+    }
   )
 
   useAnimatedReaction(
@@ -1158,6 +1202,11 @@ export default function Home() {
       alignItems: 'center',
       justifyContent: 'center',
     },
+    chargementPlusAmis: {
+      height: LIST_HEIGHT / 2,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
     calendarContainer: {
       flex:5
     },
@@ -1355,6 +1404,12 @@ export default function Home() {
                           />
                         </View>                    
                       )})}
+                    {/* the next 10 friends on their way */}
+                    {chargementPlusAmis && (
+                      <View style={s.chargementPlusAmis}>
+                        <Spinner size={24} color={colors.muted} />
+                      </View>
+                    )}
                 </Animated.ScrollView>
             )}
           </Animated.View>        
