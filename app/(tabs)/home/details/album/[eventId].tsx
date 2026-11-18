@@ -1,9 +1,10 @@
 import { Stack, useLocalSearchParams } from 'expo-router'
 import { useMemo, useState } from 'react'
-import { ActivityIndicator, FlatList, Image, StyleSheet, Switch, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native'
+import { ActivityIndicator, FlatList, Image, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import Icon from '@react-native-vector-icons/ionicons'
 
+import SwitchAbs from '@/abstractions/switchAbs'
 import ApprobationsAlbum from '@/components/approbationsAlbum'
 import VisionneusePhotos from '@/components/visionneusePhotos'
 import { useAPI } from '@/contextes/contexteAPI'
@@ -57,7 +58,8 @@ export default function AlbumEvenementEcran() {
                     <Text style={{ color: colors.text, fontFamily: fonts.body, fontSize: 16 }}>{t('album.approvalSetting')}</Text>
                     <Text style={{ color: colors.muted, fontFamily: fonts.body, fontSize: 13 }}>{t('album.approvalSettingHint')}</Text>
                 </View>
-                <Switch value={album.approbation} onValueChange={changerApprobation} />
+                {/* the app's switch (its colours, like the settings) */}
+                <SwitchAbs value={album.approbation} onValueChange={changerApprobation} />
             </View>
             <ApprobationsAlbum
                 lots={lots}
