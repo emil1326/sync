@@ -86,7 +86,8 @@ class AutoRefresh {
     }
 
     private extractLastChecked(data: any): string | undefined{
-        console.log(this.url, {data}, "last checked", data?.last_checked)
+        // only the version: the data can hold message text (never in the logs)
+        log(this.url, "last checked", data?.last_checked)
         if (data?.last_checked) {
             
             return data.last_checked
