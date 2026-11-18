@@ -1,4 +1,6 @@
 {
+	"editProfile": "Edit profile",
+	"changePhoto": "Change profile picture",
 	"navigation": {
 		"profile": "Profile",
 		"edit": "edit profile",
