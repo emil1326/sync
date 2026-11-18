@@ -1,9 +1,10 @@
 import { router } from 'expo-router'
 import { useMemo, useState } from 'react'
-import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import Icon from '@react-native-vector-icons/ionicons'
 
+import ImageChargement from '@/components/imageChargement'
 import ApprobationsAlbum from '@/components/approbationsAlbum'
 import VisionneusePhotos from '@/components/visionneusePhotos'
 import { useAPI } from '@/contextes/contexteAPI'
@@ -33,7 +34,7 @@ export default function AlbumEvenement({ idEvenement }: Props) {
     const { colors } = usePalette()
     const { fonts } = useFont()
     const { APIBaseURL } = useAPI()
-    const { album, accessible, envoi, ajouter, decider, supprimer } = useAlbumEvenement(idEvenement)
+    const { album, accessible, decider, supprimer } = useAlbumEvenement(idEvenement)
     // the strip opened full screen (index), or the sending reviewed by an admin (its id)
     const [indexVu, setIndexVu] = useState<number | null>(null)
     const [lotRevu, setLotRevu] = useState<string | null>(null)
@@ -50,6 +51,8 @@ export default function AlbumEvenement({ idEvenement }: Props) {
     const total = album.photos.length
     const photosRevues = lots.find((l) => l.id === lotRevu)?.photos ?? []
     const ouvrirAlbum = () => router.push({ pathname: '/(tabs)/home/details/album/[eventId]', params: { eventId: idEvenement } })
+    // + : the album screen, its photo picker opened right away (same picker as everywhere)
+    const ajouterPhotos = () => router.push({ pathname: '/(tabs)/home/details/album/[eventId]', params: { eventId: idEvenement, ajouter: '1' } })
 
     return (
         <View style={[s.bloc, { backgroundColor: colors.card }]}>
@@ -76,16 +79,12 @@ export default function AlbumEvenement({ idEvenement }: Props) {
 
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.bande}>
                 <TouchableOpacity
-                    onPress={ajouter}
-                    disabled={envoi}
+                    onPress={ajouterPhotos}
                     accessibilityRole="button"
                     accessibilityLabel={t('album.add')}
-                    accessibilityState={{ busy: envoi }}
                     style={[s.case, s.ajouter, { borderColor: colors.border }]}
                 >
-                    {envoi
-                        ? <ActivityIndicator color={colors.muted} />
-                        : <Icon name="add" size={30} color={colors.muted} />}
+                    <Icon name="add" size={30} color={colors.muted} />
                 </TouchableOpacity>
                 {bande.map((p, i) => (
                     <TouchableOpacity
@@ -95,7 +94,7 @@ export default function AlbumEvenement({ idEvenement }: Props) {
                         accessibilityLabel={p.statut === 'en_attente' ? t('album.pending') : t('album.open', { pseudo: p.auteur.pseudo })}
                         style={[s.case, { backgroundColor: colors.border }]}
                     >
-                        <Image
+                        <ImageChargement
                             source={{ uri: `${APIBaseURL}${p.url}` }}
                             style={[StyleSheet.absoluteFill, p.statut === 'en_attente' && s.enAttente]}
                             resizeMode="cover"

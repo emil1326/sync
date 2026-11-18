@@ -1,9 +1,10 @@
 import { useState } from 'react'
-import { FlatList, Image, Modal, Pressable, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native'
+import { FlatList, Modal, Pressable, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Icon from '@react-native-vector-icons/ionicons'
 
+import ImageChargement from '@/components/imageChargement'
 import ProfilPic from '@/components/pfp'
 import { useAPI } from '@/contextes/contexteAPI'
 import { useFont } from '@/contextes/contexteFont'
@@ -68,7 +69,7 @@ export default function VisionneusePhotos({ photos, indexDepart, onFermer, onSup
                         onMomentumScrollEnd={(e) => setIndex(Math.round(e.nativeEvent.contentOffset.x / largeur))}
                         renderItem={({ item }) => (
                             <Pressable onPress={onFermer} style={{ width: largeur, height: hauteur, justifyContent: 'center' }} accessibilityLabel={t('album.close')}>
-                                <Image source={{ uri: `${APIBaseURL}${item.url}` }} style={s.image} resizeMode="contain" />
+                                <ImageChargement tailleSpinner={36} couleurSpinner="white" source={{ uri: `${APIBaseURL}${item.url}` }} style={s.image} resizeMode="contain" />
                             </Pressable>
                         )}
                     />

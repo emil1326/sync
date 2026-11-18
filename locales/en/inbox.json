@@ -2,7 +2,7 @@
 	"title": "Messages",
 	"newMessage": "New message",
 	"list": {
-		"empty": "No conversations yet. Tap ✏️ or + to write to a friend."
+		"empty": "No conversations yet. Tap + to write to a friend."
 	},
 	"requests": {
 		"title": "Friend requests",
@@ -18,6 +18,9 @@
 		"admin": "Organizer",
 		"you": "you",
 		"openProfile": "See {{pseudo}}'s profile",
+		"profile": "Profile",
+		"viewProfile": "See profile",
+		"deleteForMe": "Delete conversation",
 		"createdOn": "Conversation created on {{date}}",
 		"eventGroup": "{{titre}}'s group chat",
 		"open": "{{nom}} conversation info",
@@ -38,6 +41,16 @@
 		"remove": "Remove the photo",
 		"add": "Add photos",
 		"counter": "{{index}} / {{total}}"
+	},
+	"gallery": {
+		"title": "Photos",
+		"count": "{{count}} / {{max}}",
+		"cancel": "Cancel",
+		"done": "Done",
+		"limited": "Sync only sees the photos you chose.",
+		"manage": "Change",
+		"empty": "No photos",
+		"prepareFailed": "Couldn't prepare the photos"
 	},
 	"seenBy": "Seen by {{noms}}",
 	"preview": {

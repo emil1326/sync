@@ -1018,7 +1018,6 @@ export default function Home() {
   useEffect(() => () => {
     userEventsRefresh.current?.destroy()
     friendsEventsRefresh.current?.destroy()
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
 

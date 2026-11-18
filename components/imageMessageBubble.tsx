@@ -1,10 +1,11 @@
 import { useState } from 'react'
 import {
-    ActivityIndicator, FlatList, Image, Modal, Pressable, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View,
+    FlatList, Modal, Pressable, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View,
 } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import Icon from '@react-native-vector-icons/ionicons'
 
+import ImageChargement from '@/components/imageChargement'
 import { useFont } from '@/contextes/contexteFont'
 import { usePalette } from '@/contextes/contextePalette'
 import { Message } from '@/types/messaging'
@@ -31,7 +32,6 @@ export default function ImageMessageBubble({ message }: Props) {
     const { width: largeurEcran, height: hauteurEcran } = useWindowDimensions()
     // width / height of a single photo, known once it's loaded (square until then)
     const [ratio, setRatio] = useState(1)
-    const [chargees, setChargees] = useState<Record<string, boolean>>({})
     // index of the photo shown full screen, null when closed
     const [pleinEcran, setPleinEcran] = useState<number | null>(null)
     const [indexVu, setIndexVu] = useState(0)
@@ -43,7 +43,6 @@ export default function ImageMessageBubble({ message }: Props) {
         setIndexVu(index)
         setPleinEcran(index)
     }
-    const marquerChargee = (url: string) => setChargees((avant) => (avant[url] ? avant : { ...avant, [url]: true }))
 
     const vignette = (url: string, index: number, largeur: number, hauteur: number) => (
         <TouchableOpacity
@@ -54,7 +53,8 @@ export default function ImageMessageBubble({ message }: Props) {
             accessibilityLabel={t('photo.open')}
             style={[s.cadre, { width: largeur, height: hauteur, backgroundColor: colors.border }]}
         >
-            <Image
+            {/* the app's spinner until the photo is there */}
+            <ImageChargement
                 source={{ uri: url }}
                 style={StyleSheet.absoluteFill}
                 resizeMode="cover"
@@ -63,10 +63,8 @@ export default function ImageMessageBubble({ message }: Props) {
                         const { width, height } = e.nativeEvent.source
                         if (width > 0 && height > 0) setRatio(width / height)
                     }
-                    marquerChargee(url)
                 }}
             />
-            {!chargees[url] && <ActivityIndicator style={StyleSheet.absoluteFill} color={colors.muted} />}
         </TouchableOpacity>
     )
 
@@ -110,7 +108,7 @@ export default function ImageMessageBubble({ message }: Props) {
                                 accessibilityLabel={t('photo.close')}
                                 style={{ width: largeurEcran, height: hauteurEcran, justifyContent: 'center' }}
                             >
-                                <Image source={{ uri: item }} style={s.pleineImage} resizeMode="contain" />
+                                <ImageChargement tailleSpinner={36} couleurSpinner="white" source={{ uri: item }} style={s.pleineImage} resizeMode="contain" />
                             </Pressable>
                         )}
                     />
