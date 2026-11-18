@@ -4,7 +4,7 @@ import { router } from 'expo-router';
 import { useFocusEffect, useIsFocused } from "expo-router/react-navigation";
 import React, { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Alert, Dimensions, ImageSourcePropType, Modal, Pressable, StyleSheet, Text, TouchableOpacity, useColorScheme, View, ViewStyle } from 'react-native';
+import { ActivityIndicator, Alert, Dimensions, ImageSourcePropType, Modal, Pressable, StyleSheet, Text, TouchableOpacity, useColorScheme, View, ViewStyle } from 'react-native';
 import Animated, { createAnimatedComponent, interpolate, useAnimatedProps, useAnimatedStyle, useSharedValue, withDelay, withSpring, withTiming } from 'react-native-reanimated';
 import { interpolatePath, parse } from 'react-native-redash';
 import Svg, { Path } from 'react-native-svg';
@@ -19,6 +19,8 @@ import { usePalette } from '@/contextes/contextePalette';
 import { useRouteAbs } from '@/contextes/contexteRoute';
 
 import log from '@/functions/log';
+import catcher from '@/functions/catcher';
+import ChooseImage from '@/functions/choisirImage';
 
 import { useActionFab } from '@/hooks/useActionFAB';
 
@@ -42,7 +44,7 @@ export default function ProfilEcran(){
     const isFocused = useIsFocused()
     const { APIBaseURL } = useAPI()
     const { ajouterEcran } = useRouteAbs()
-    const { membre, getMembre, patchStatutDisponibilite } = useMembre()
+    const { membre, getMembre, patchStatutDisponibilite, patchProfil } = useMembre()
 
     const {height: WIN_H} = Dimensions.get('window') 
     const icones = {        
@@ -68,7 +70,6 @@ export default function ProfilEcran(){
     const hamburgerMenuBg = useSharedValue(colors.primary)
 
     const paramsOptionBottom = useSharedValue(0)
-    const editOptionBottom = useSharedValue(0)
     const logOutOptionBottom = useSharedValue(0)
     const importOptionBottom = useSharedValue(0) // stories #4 et #7 : importer un calendrier
     const adminOptionBottom = useSharedValue(0)
@@ -134,12 +135,6 @@ export default function ProfilEcran(){
     const paramsOptionAnimated = useAnimatedStyle(() => {
         return {
             bottom: paramsOptionBottom.value,
-            opacity: optionOpacity.value
-        }
-    })
-    const editOptionAnimated = useAnimatedStyle(() => {
-        return {
-            bottom: editOptionBottom.value,
             opacity: optionOpacity.value
         }
     })
@@ -209,23 +204,45 @@ export default function ProfilEcran(){
         }, oldBrightness.current <= minBrightness ? 2000: 0)       
         
     }   
+    const ouvrirEdition = () => router.push('/(tabs)/profile/edit')
+
+    // Tapping one's photo changes it right away: pick (square crop), upload, done.
+    // The rest of the profile is edited with the "Modifier le profil" button.
+    const [envoiPhoto, setEnvoiPhoto] = useState(false)
+    const changerPhoto = async () => {
+        if (envoiPhoto) return
+        await ChooseImage(async (img) => {
+            setEnvoiPhoto(true)
+            try {
+                await patchProfil(undefined, undefined, {
+                    uri: img.uri,
+                    mimeType: img.mimeType ?? 'image/jpeg',
+                    fileName: img.fileName ?? img.uri.split('/').pop(),
+                })
+            } catch (error) {
+                catcher(error, t('errors.updateFailed'))
+            } finally {
+                setEnvoiPhoto(false)
+            }
+        })
+    }
     const SPRING_DURATION_ESTIMATE = 250 
     const toggleHamburgerMenu = () => {   
         const isOpen = !hamburgerMenuOpen
         setHamburgerMenuOpen(isOpen)
         hamburgerMenuOpenShared.value = withTiming(isOpen ? 1 : 0)
         hamburgerMenuBg.value = withTiming(isOpen ? 'transparent' : colors.primary, withTimingConfig)
-        editOptionBottom.value = withDelay(0, withSpring(isOpen ? FLOATING_BTN_HEIGHT + MENU_OPTIONS_GAP : 0, withSpringConfig))
+        // (editing the profile is now a button on the profile card, not in this menu)
+        // log out closest to the menu button, settings above it
+        logOutOptionBottom.value = withDelay(0, withSpring(isOpen ? FLOATING_BTN_HEIGHT + MENU_OPTIONS_GAP : 0, withSpringConfig))
         paramsOptionBottom.value = withDelay(40, withSpring(isOpen ? (FLOATING_BTN_HEIGHT + MENU_OPTIONS_GAP) * 2 : 0, withSpringConfig))
-        logOutOptionBottom.value = withDelay(80, withSpring(isOpen ? (FLOATING_BTN_HEIGHT + MENU_OPTIONS_GAP) * 3 : 0, withSpringConfig))
-        importOptionBottom.value = withDelay(120, withSpring(isOpen ? (FLOATING_BTN_HEIGHT + MENU_OPTIONS_GAP) * 4 : 0, withSpringConfig))
-        adminOptionBottom.value = withDelay(160, withSpring(isOpen ? (FLOATING_BTN_HEIGHT + MENU_OPTIONS_GAP) * 4 : 0, withSpringConfig))
+        importOptionBottom.value = withDelay(80, withSpring(isOpen ? (FLOATING_BTN_HEIGHT + MENU_OPTIONS_GAP) * 3 : 0, withSpringConfig))
+        adminOptionBottom.value = withDelay(80, withSpring(isOpen ? (FLOATING_BTN_HEIGHT + MENU_OPTIONS_GAP) * 3 : 0, withSpringConfig))
         optionOpacity.value = withDelay(isOpen ? 0 : 160, withTiming(isOpen ? 1 : 0, withTimingConfig))
         
         setTimeout(() => Haptics.click(), 0 + SPRING_DURATION_ESTIMATE)
         setTimeout(() => Haptics.clickLeger(), 40 + SPRING_DURATION_ESTIMATE)
         setTimeout(() => Haptics.click(), 80 + SPRING_DURATION_ESTIMATE)
-        setTimeout(() => Haptics.clickLeger(), 120 + SPRING_DURATION_ESTIMATE)
     }
     /* 
         const getWidgetsMembre = async ()=>{
@@ -332,6 +349,27 @@ export default function ProfilEcran(){
             justifyContent: 'center',
             zIndex:1
         },
+        boutonEditer: {
+            height: 42,
+            borderRadius: 10,
+            borderWidth: 1,
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 8,
+        },
+        // camera bottom left, mirroring the availability light (bottom right)
+        badgeCrayon: {
+            position: 'absolute',
+            left: 4,
+            bottom: 4,
+            width: 28,
+            height: 28,
+            borderRadius: 14,
+            borderWidth: 2,
+            alignItems: 'center',
+            justifyContent: 'center',
+        },
         floatingOption: {
             position: 'absolute',
             zIndex:0
@@ -367,7 +405,22 @@ export default function ProfilEcran(){
                     <View style={[{minHeight:'48%', flexDirection:'column', gap:12, paddingBottom:12, borderTopLeftRadius: 16, borderTopRightRadius:16, backgroundColor:colors.card, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.7, shadowRadius: 8, elevation:5, borderBottomColor:colors.border, borderBottomWidth:1}]}>                
                         {/* Pfp */}
                         <Animated.View style={{ height: 120, width: 120, zIndex: 2, marginLeft: 16, marginTop: -56, justifyContent: 'center', alignItems: 'center' }}>
-                            <PfpWithAvailability size={120} pfp={membre.fp} statut={membre.statutDisponibilite} />
+                            {/* tapping one's own photo changes it (camera badge) */}
+                            <TouchableOpacity
+                                onPress={changerPhoto}
+                                disabled={envoiPhoto}
+                                activeOpacity={0.8}
+                                accessibilityRole="button"
+                                accessibilityLabel={t('changePhoto')}
+                                accessibilityState={{ busy: envoiPhoto }}
+                            >
+                                <PfpWithAvailability size={120} pfp={membre.fp} statut={membre.statutDisponibilite} />
+                                <View style={[s.badgeCrayon, { backgroundColor: colors.primary, borderColor: colors.card }]}>
+                                    {envoiPhoto
+                                        ? <ActivityIndicator size="small" color={colors.text} />
+                                        : <Icon name="camera" size={14} color={colors.text} />}
+                                </View>
+                            </TouchableOpacity>
                         </Animated.View>
                         {/* Pseudo and Code */}
                         <Animated.View style={[{ justifyContent: 'center', paddingHorizontal: 16}, infosMembreAnime]}>
@@ -392,7 +445,19 @@ export default function ProfilEcran(){
                         {/* Bio */}
                         <Animated.View style={{ width:'100%', paddingHorizontal:16, paddingVertical:4, flexShrink:1 }}>
                             <Text style={[s.bio,{color:colors.text, fontFamily:fonts.body, fontSize:16, width:'100%', maxHeight:66}]} numberOfLines={3} ellipsizeMode="tail">{membre.bio}</Text>
-                        </Animated.View>                        
+                        </Animated.View>
+                        {/* Edit profile: on the profile itself, where people look for it (it was
+                            hidden in the floating menu) */}
+                        <View style={{ paddingHorizontal: 16 }}>
+                            <TouchableOpacity
+                                onPress={ouvrirEdition}
+                                accessibilityRole="button"
+                                style={[s.boutonEditer, { borderColor: colors.border, backgroundColor: colors.background }]}
+                            >
+                                <Icon name="pencil-outline" size={18} color={colors.text} />
+                                <Text style={{ color: colors.text, fontFamily: fonts.body, fontSize: 16 }}>{t('editProfile')}</Text>
+                            </TouchableOpacity>
+                        </View>
                     </View> 
                 </View>  
             <Modal transparent visible={menuStatutVisible} animationType="fade" onRequestClose={() => setMenuStatutVisible(false)}>
@@ -463,15 +528,6 @@ export default function ProfilEcran(){
                         }}
                         >
                             <Icon name='cog' color={colors.text} size={28} />
-                        </AnimatedTouchableOpacity>
-                        <AnimatedTouchableOpacity
-                            style={[s.floatingButton, s.floatingOption, editOptionAnimated]}
-                        onPress={() => {
-                            toggleHamburgerMenu()
-                            router.push('/(tabs)/profile/edit')
-                        }}
-                        >
-                            <Icon name='pencil' color={colors.text} size={28} />
                         </AnimatedTouchableOpacity>
                         <AnimatedTouchableOpacity
                             style={[s.floatingButton, s.floatingOption, { borderColor: colors.error }, logOutOptionAnimated]}
