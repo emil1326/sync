@@ -36,6 +36,8 @@ type ConversationsContextType = {
     envoyerMessage: (conversationId: string, message: EnvoiMessage) => Promise<Message | undefined>
     demarrerConversationAvecAmi: (amiId: string) => Promise<string | undefined>
     rafraichirConversations: () => void
+    /** erases a conversation on my side only (the others keep it); throws if it failed */
+    effacerConversation: (conversationId: string) => Promise<void>
 }
 
 const ConversationsContexte = createContext<ConversationsContextType | undefined>(undefined)
@@ -321,6 +323,20 @@ export function ConversationsProvider({ children }: { children: React.ReactNode 
         refreshConversations.current?.forceRefresh()
     }, [])
 
+    // Removed from the list right away (the list is reloaded from the server either way, so
+    // it comes back if the server refused); its messages kept in memory are dropped, so
+    // reopening it from a friend shows a fresh conversation.
+    const effacerConversation = useCallback(async (conversationId: string) => {
+        setConversations((cs) => cs.filter((c) => c.id !== conversationId))
+        setMessages((ms) => (ms[0]?.conversationId === conversationId ? [] : ms))
+        setMessagesChargesPour((id) => (id === conversationId ? undefined : id))
+        try {
+            await apiRef.current.post(`/conversations/${conversationId}/effacer`)
+        } finally {
+            refreshConversations.current?.forceRefresh()
+        }
+    }, [])
+
     const nonLusTotal = useMemo(() => conversations.reduce((total, c) => total + (c.nonLus || 0), 0), [conversations])
 
     // same object until something changes: every screen using the conversations
@@ -337,8 +353,9 @@ export function ConversationsProvider({ children }: { children: React.ReactNode 
         envoyerMessage,
         demarrerConversationAvecAmi,
         rafraichirConversations,
+        effacerConversation,
     }), [conversations, nonLusTotal, messages, vus, conversationOuverte, messagesChargesPour, ouvrirConversation,
-        fermerConversation, envoyerMessage, demarrerConversationAvecAmi, rafraichirConversations])
+        fermerConversation, envoyerMessage, demarrerConversationAvecAmi, rafraichirConversations, effacerConversation])
 
     return (
         <ConversationsContexte.Provider value={value}>

@@ -1,7 +1,6 @@
 import { useCallback } from 'react'
-import { FlatList, RefreshControl, StyleSheet, Text, View } from 'react-native'
+import { Alert, FlatList, RefreshControl, StyleSheet, Text, View } from 'react-native'
 import { useFocusEffect, useRouter } from 'expo-router'
-import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { usePalette } from '@/contextes/contextePalette'
 import { useFont } from '@/contextes/contexteFont'
@@ -14,6 +13,7 @@ import NotificationItem from '@/components/notificationItem'
 import { Notification, useNotifications } from '@/contextes/contexteNotifications'
 import { useTranslation } from 'react-i18next'
 import { Conversation } from '@/types/messaging'
+import catcher from '@/functions/catcher'
 
 /**
  * Story #1 (Isma) : "En tant que membre, j'aimerais pouvoir envoyer un
@@ -30,11 +30,10 @@ import { Conversation } from '@/types/messaging'
 export default function Inbox(){
     const {colors} = usePalette()
     const {fonts} = useFont()
-    const insets = useSafeAreaInsets()
     const router = useRouter()
     const {ajouterEcran} = useRouteAbs()
 
-    const {conversations, rafraichirConversations} = useConversations()
+    const {conversations, rafraichirConversations, effacerConversation} = useConversations()
     const { t } = useTranslation('inbox')
     const { notifications } = useNotifications()
 
@@ -55,16 +54,32 @@ export default function Inbox(){
         icon: null,
     })
 
+    // Erased on my side only, after a confirmation: the others keep it, and it comes back
+    // (without its history) at the next message
+    const supprimer = (conversation: Conversation) => {
+        Alert.alert(t('delete.title'), t('delete.message', { nom: conversation.ami.pseudo }), [
+            { text: t('delete.cancel'), style: 'cancel' },
+            {
+                text: t('delete.confirm'),
+                style: 'destructive',
+                onPress: () => {
+                    effacerConversation(conversation.id).catch((error) => catcher(error, t('delete.failed')))
+                },
+            },
+        ])
+    }
+
     const ouvrir = (conversation: Conversation) => {
         router.navigate({pathname:'/(tabs)/inbox/[conversationId]', params:{conversationId: conversation.id}})
     }
 
     return (
-        <View style={[styles.conteneur,{backgroundColor: colors.background, paddingTop: insets.top}]}>
+        // (the stack's header now takes care of the top of the screen)
+        <View style={[styles.conteneur,{backgroundColor: colors.background}]}>
             <FlatList
                 data={conversations}
                 keyExtractor={(item) => item.id}
-                renderItem={({item}) => <ConversationItem conversation={item} onPress={ouvrir}/>}
+                renderItem={({item}) => <ConversationItem conversation={item} onPress={ouvrir} onSupprimer={supprimer}/>}
                 refreshControl={<RefreshControl refreshing={false} onRefresh={rafraichirConversations} />}
                 contentContainerStyle={{ flexGrow: 1 }}
                 ListHeaderComponent={demandesEnAttente.length > 0 ? (

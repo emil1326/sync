@@ -36,16 +36,35 @@ export default function Conversation(){
 
     const conversation = conversations.find((c) => c.id === conversationId)
 
-    // Tapping the title opens the conversation's info (like Messenger), in the same stack
-    // (this screen is in the inbox stack, or in the home one when opened from an event).
+    // Group conversation: more than one other member, a title or a linked event. Opened from
+    // an event before the list has it, the title param is enough to know it's a group.
+    const estGroupe = conversation
+        ? (conversation.participants?.length ?? 0) > 1 || !!conversation.titre || !!conversation.evenementId
+        : !!titre
+
+    // The friend in a one-to-one conversation (the list sends them as `ami`)
+    // (none when the other one is gone: the info page then)
+    const idAmi = !estGroupe && conversation?.participants?.length === 1 ? conversation.participants[0].id : undefined
+
+    // Tapping the title, in the same stack (this screen is in the inbox stack, or in the
+    // home one when opened from an event):
+    //  - a group (an event's or not): the conversation's info (members, event...), like Messenger
+    //  - one-to-one: the friend's profile directly (the info page had nothing more to show)
     const dansAccueil = (useSegments() as string[]).includes('home')
     const ouvrirInfos = useCallback(() => {
         if (!conversationId) return
+        if (idAmi) {
+            router.push({
+                pathname: dansAccueil ? '/(tabs)/home/profil/[membreId]' : '/(tabs)/inbox/profil/[membreId]',
+                params: { membreId: idAmi },
+            } as any)
+            return
+        }
         router.push({
             pathname: dansAccueil ? '/(tabs)/home/conversation/infos/[conversationId]' : '/(tabs)/inbox/infos/[conversationId]',
             params: { conversationId },
         } as any)
-    }, [conversationId, dansAccueil])
+    }, [conversationId, dansAccueil, idAmi])
     const titreAffiche = conversation?.ami.pseudo ?? titre ?? ''
     const photoEntete = conversation?.ami.fp_url
 
@@ -58,7 +77,7 @@ export default function Conversation(){
                 onPress={ouvrirInfos}
                 hitSlop={8}
                 accessibilityRole="button"
-                accessibilityLabel={t('infos.open', { nom: titreAffiche })}
+                accessibilityLabel={idAmi ? t('infos.openProfile', { pseudo: titreAffiche }) : t('infos.open', { nom: titreAffiche })}
                 style={{ flexDirection: 'row', alignItems: 'center', gap: 8, maxWidth: 240 }}
             >
                 <ProfilPic size={32} pfp={photoEntete} />
@@ -70,7 +89,7 @@ export default function Conversation(){
                 </View>
             </TouchableOpacity>
         ),
-    }), [ouvrirInfos, t, titreAffiche, photoEntete, colors.text, colors.muted, fonts.title])
+    }), [ouvrirInfos, idAmi, t, titreAffiche, photoEntete, colors.text, colors.muted, fonts.title])
 
     // Tapping someone's avatar in a group opens their profile, in the same stack
     const ouvrirProfil = (membreId: string) => {
@@ -79,12 +98,6 @@ export default function Conversation(){
             params: { membreId },
         } as any)
     }
-
-    // Group conversation: more than one other member, a title or a linked event. Opened from
-    // an event before the list has it, the title param is enough to know it's a group.
-    const estGroupe = conversation
-        ? (conversation.participants?.length ?? 0) > 1 || !!conversation.titre || !!conversation.evenementId
-        : !!titre
 
     const listeRef = useRef<FlatList>(null)
     const conteneurRef = useRef<View>(null)

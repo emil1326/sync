@@ -1,4 +1,6 @@
 {
+	"title": "Messages",
+	"newMessage": "New message",
 	"requests": {
 		"title": "Friend requests",
 		"empty": "You have no pending friend requests."
@@ -39,5 +41,13 @@
 		"photo": "📷 Photo",
 		"voice": "🎤 Voice message",
 		"photos": "📷 Photos"
+	},
+	"delete": {
+		"button": "Delete",
+		"title": "Delete this conversation?",
+		"message": "It will be deleted on your side only: {{nom}} keeps it. If you write to each other again, you'll start from an empty conversation.",
+		"confirm": "Delete",
+		"cancel": "Cancel",
+		"failed": "Couldn't delete the conversation"
 	}
 }

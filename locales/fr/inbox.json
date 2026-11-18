@@ -1,4 +1,6 @@
 {
+	"title": "Messages",
+	"newMessage": "Nouveau message",
 	"requests": {
 		"title": "Demandes d'ami",
 		"empty": "Aucune demande d'ami en attente."
@@ -39,5 +41,13 @@
 		"photo": "📷 Photo",
 		"voice": "🎤 Message vocal",
 		"photos": "📷 Photos"
+	},
+	"delete": {
+		"button": "Supprimer",
+		"title": "Supprimer la conversation ?",
+		"message": "Elle sera effacée de ton côté seulement : {{nom}} la garde. Si vous vous réécrivez, tu repartiras d'une conversation vide.",
+		"confirm": "Supprimer",
+		"cancel": "Annuler",
+		"failed": "Impossible de supprimer la conversation"
 	}
 }
