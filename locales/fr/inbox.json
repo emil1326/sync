@@ -26,14 +26,18 @@
 		"deleteFailed": "Impossible de supprimer la conversation"
 	},
 	"photo": {
-		"send": "Envoyer une photo",
+		"send": "Choisir des photos",
 		"open": "Voir la photo",
 		"close": "Fermer la photo",
-		"sendFailed": "La photo n'a pas pu être envoyée"
+		"sendFailed": "La photo n'a pas pu être envoyée",
+		"remove": "Retirer la photo",
+		"add": "Ajouter des photos",
+		"counter": "{{index}} / {{total}}"
 	},
 	"seenBy": "Vu par {{noms}}",
 	"preview": {
 		"photo": "📷 Photo",
-		"voice": "🎤 Message vocal"
+		"voice": "🎤 Message vocal",
+		"photos": "📷 Photos"
 	}
 }

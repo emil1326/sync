@@ -1,6 +1,7 @@
 import { DateTime } from "luxon"
 
-export type TypeMessage = 'texte' | 'vocal' | 'image'
+/** 'image': one photo, 'album': several photos in one message */
+export type TypeMessage = 'texte' | 'vocal' | 'image' | 'album'
 
 export type Message = {
     id: string
@@ -12,8 +13,8 @@ export type Message = {
     type: TypeMessage
     contenu?: string
     audioUrl?: string
-    /** photo message: the image's address */
-    imageUrl?: string
+    /** photo or album message: the photos' addresses, in order */
+    imageUrls?: string[]
     dureeSecondes?: number
     envoyeLe: DateTime
     lu: boolean
@@ -62,4 +63,4 @@ export type ConversationBrute = Omit<Conversation,'dernierMessage'> & {
 export type EnvoiMessage =
     | { type: 'texte', contenu: string }
     | { type: 'vocal', uri: string, dureeSecondes: number }
-    | { type: 'image', uri: string, mimeType?: string, nomFichier?: string }
+    | { type: 'image', photos: { uri: string, mimeType?: string, nomFichier?: string }[] }

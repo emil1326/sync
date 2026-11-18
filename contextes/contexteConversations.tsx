@@ -68,7 +68,7 @@ function convertirMessage(m: MessageBrut, baseApp: string): Message {
     return {
         ...m,
         audioUrl: versUrlMedia(m.audioUrl, baseApp, '/audio/'),
-        imageUrl: versUrlMedia(m.imageUrl, baseApp, '/img/'),
+        imageUrls: m.imageUrls?.map((url) => versUrlMedia(url, baseApp, '/img/') ?? url),
         envoyeLe: versLocale(m.envoyeLe),
     }
 }
@@ -234,10 +234,13 @@ export function ConversationsProvider({ children }: { children: React.ReactNode 
         if (envoi.type === 'texte') {
             reponse = await apiRef.current.post(url, { type: 'texte', contenu: envoi.contenu })
         } else if (envoi.type === 'image') {
-            const nomFichier = envoi.nomFichier || envoi.uri.split('/').pop() || 'photo.jpg'
+            // every photo in the same "image" field: one message (an album when several)
             const form = new FormData()
             form.append('type', 'image')
-            form.append('image', { uri: envoi.uri, name: nomFichier, type: envoi.mimeType || typeMimeImage(nomFichier) } as any)
+            envoi.photos.forEach((photo, i) => {
+                const nomFichier = photo.nomFichier || photo.uri.split('/').pop() || `photo-${i + 1}.jpg`
+                form.append('image', { uri: photo.uri, name: nomFichier, type: photo.mimeType || typeMimeImage(nomFichier) } as any)
+            })
 
             reponse = await apiRef.current.post(url, form, {
                 headers: { 'Content-Type': 'multipart/form-data' },

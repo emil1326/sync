@@ -43,12 +43,12 @@ function MessageBubble({message,estDeMoi,groupe = false,afficherAuteur = false,o
                     : { backgroundColor: colors.card, borderBottomLeftRadius: 4 },
                 avecAuteur && styles.bulleGroupe,
                 // a photo almost fills its bubble
-                message.type === 'image' && styles.bulleImage,
+                (message.type === 'image' || message.type === 'album') && styles.bulleImage,
             ]}
         >
             {message.type === 'vocal'
                 ? <VoiceMessageBubble message={message} estDeMoi={estDeMoi} />
-                : message.type === 'image'
+                : message.type === 'image' || message.type === 'album'
                 ? <ImageMessageBubble message={message} />
                 : (
                     <Text style={{ color: estDeMoi ? 'white' : colors.text, fontFamily: fonts.body, fontSize: 15 }}>
@@ -59,7 +59,7 @@ function MessageBubble({message,estDeMoi,groupe = false,afficherAuteur = false,o
             <Text
                 style={[
                     styles.heure,
-                    message.type === 'image' && styles.heureImage,
+                    (message.type === 'image' || message.type === 'album') && styles.heureImage,
                     { color: estDeMoi ? 'rgba(255,255,255,0.7)' : colors.muted, fontFamily: fonts.body },
                 ]}
             >
@@ -122,7 +122,7 @@ function memesProps(avant: Props, apres: Props) {
         && a.lu === b.lu
         && a.contenu === b.contenu
         && a.audioUrl === b.audioUrl
-        && a.imageUrl === b.imageUrl
+        && (a.imageUrls ?? []).join('|') === (b.imageUrls ?? []).join('|')
         && a.auteurPseudo === b.auteurPseudo
         && a.auteurFpUrl === b.auteurFpUrl
         && avant.estDeMoi === apres.estDeMoi

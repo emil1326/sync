@@ -27,6 +27,8 @@ export default function ConversationItem({ conversation, onPress }: Props) {
             ? t('preview.voice')
             : dernierMessage.type === 'image'
             ? t('preview.photo')
+            : dernierMessage.type === 'album'
+            ? t('preview.photos')
             : dernierMessage.contenu
         : 'aucun message pour le moment'
     return (

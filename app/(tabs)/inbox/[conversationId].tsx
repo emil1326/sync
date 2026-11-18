@@ -138,12 +138,13 @@ export default function Conversation(){
             catcher(error,"erreur d'envoi du message vocal")
         }
     }
-    const envoyerImage = async (photo: { uri: string, mimeType?: string, nomFichier?: string }) => {
+    const envoyerImages = async (photos: { uri: string, mimeType?: string, nomFichier?: string }[]) => {
         if (!conversationId) return
         try {
-            await envoyerMessage(conversationId, { type: 'image', ...photo })
+            await envoyerMessage(conversationId, { type: 'image', photos })
         } catch (error) {
             catcher(error, t('photo.sendFailed'))
+            throw error // MessageInput keeps the photos not sent yet
         }
     }
 
@@ -208,7 +209,7 @@ export default function Conversation(){
             </Pressable>
 
             {/* pas de marge en bas : la barre d'onglets tient déjà compte du bas de l'écran */}
-            <MessageInput onEnvoyerTexte={envoyerTexte} onEnvoyerVocal={envoyerVocal} onEnvoyerImage={envoyerImage} />
+            <MessageInput onEnvoyerTexte={envoyerTexte} onEnvoyerVocal={envoyerVocal} onEnvoyerImages={envoyerImages} />
         </Animated.View>
 
     )

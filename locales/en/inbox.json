@@ -26,14 +26,18 @@
 		"deleteFailed": "Couldn't delete the conversation"
 	},
 	"photo": {
-		"send": "Send a photo",
+		"send": "Choose photos",
 		"open": "See the photo",
 		"close": "Close the photo",
-		"sendFailed": "The photo couldn't be sent"
+		"sendFailed": "The photo couldn't be sent",
+		"remove": "Remove the photo",
+		"add": "Add photos",
+		"counter": "{{index}} / {{total}}"
 	},
 	"seenBy": "Seen by {{noms}}",
 	"preview": {
 		"photo": "📷 Photo",
-		"voice": "🎤 Voice message"
+		"voice": "🎤 Voice message",
+		"photos": "📷 Photos"
 	}
 }
