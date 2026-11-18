@@ -38,6 +38,14 @@ export default function Conversation(){
     }
     const titreAffiche = conversation?.ami.pseudo ?? titre ?? ''
 
+    // Tapping someone's avatar in a group opens their profile, in the same stack
+    const ouvrirProfil = (membreId: string) => {
+        router.push({
+            pathname: dansAccueil ? '/(tabs)/home/profil/[membreId]' : '/(tabs)/inbox/profil/[membreId]',
+            params: { membreId },
+        } as any)
+    }
+
     // Group conversation: more than one other member, a title or a linked event. Opened from
     // an event before the list has it, the title param is enough to know it's a group.
     const estGroupe = conversation
@@ -147,6 +155,7 @@ export default function Conversation(){
                         groupe={estGroupe}
                         // avatar and pseudo only on the last message of a run from the same person
                         afficherAuteur={messages[index + 1]?.auteurId !== item.auteurId}
+                        onPressAuteur={() => ouvrirProfil(item.auteurId)}
                     />
                 )}
                 ListEmptyComponent={

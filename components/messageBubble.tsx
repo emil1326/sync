@@ -1,4 +1,5 @@
-import { StyleSheet, Text, View } from 'react-native'
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native'
+import { useTranslation } from 'react-i18next'
 
 import { usePalette } from '@/contextes/contextePalette'
 import { useFont } from '@/contextes/contexteFont'
@@ -18,10 +19,13 @@ type Props = {
     groupe?: boolean
     /** last message of a run from the same author: show the avatar and pseudo on this one */
     afficherAuteur?: boolean
+    /** tapping the author's avatar or pseudo (opens their profile) */
+    onPressAuteur?: () => void
 }
-export default function MessageBubble({message,estDeMoi,groupe = false,afficherAuteur = false}: Props){
+export default function MessageBubble({message,estDeMoi,groupe = false,afficherAuteur = false,onPressAuteur}: Props){
     const {colors} = usePalette()
     const {fonts} = useFont()
+    const { t } = useTranslation('inbox')
 
     // In a group, the others' messages have their avatar on the left and their pseudo
     // under the bubble, only once per run (like Messenger). My messages don't change.
@@ -69,13 +73,25 @@ export default function MessageBubble({message,estDeMoi,groupe = false,afficherA
         <View style={[styles.ligne, styles.ligneGroupe, afficherAuteur && styles.finSerie]}>
             {/* the avatar sits at the bottom of the bubble; an empty space keeps the run aligned */}
             <View style={[styles.colonneAvatar, avecPseudo && styles.avatarAuDessusDuPseudo]}>
-                {afficherAuteur && <ProfilPic size={TAILLE_AVATAR} pfp={message.auteurFpUrl} />}
+                {afficherAuteur && (
+                    <TouchableOpacity
+                        onPress={onPressAuteur}
+                        disabled={!onPressAuteur}
+                        hitSlop={6}
+                        accessibilityRole="button"
+                        accessibilityLabel={t('infos.openProfile', { pseudo: message.auteurPseudo ?? '' })}
+                    >
+                        <ProfilPic size={TAILLE_AVATAR} pfp={message.auteurFpUrl} />
+                    </TouchableOpacity>
+                )}
             </View>
             <View style={styles.colonneBulle}>
                 {bulle}
                 {avecPseudo && (
                     <Text
                         numberOfLines={1}
+                        onPress={onPressAuteur}
+                        suppressHighlighting
                         style={[styles.pseudo, { color: colors.muted, fontFamily: fonts.body }]}
                     >
                         {message.auteurPseudo}
