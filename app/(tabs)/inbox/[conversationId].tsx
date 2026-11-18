@@ -42,29 +42,18 @@ export default function Conversation(){
         ? (conversation.participants?.length ?? 0) > 1 || !!conversation.titre || !!conversation.evenementId
         : !!titre
 
-    // The friend in a one-to-one conversation (the list sends them as `ami`)
-    // (none when the other one is gone: the info page then)
-    const idAmi = !estGroupe && conversation?.participants?.length === 1 ? conversation.participants[0].id : undefined
-
     // Tapping the title, in the same stack (this screen is in the inbox stack, or in the
     // home one when opened from an event):
-    //  - a group (an event's or not): the conversation's info (members, event...), like Messenger
-    //  - one-to-one: the friend's profile directly (the info page had nothing more to show)
+    // the conversation's info, like Messenger: a group's (members, event...) or a one-to-one
+    // chat's (the friend's profile, the photos, delete on my side)
     const dansAccueil = (useSegments() as string[]).includes('home')
     const ouvrirInfos = useCallback(() => {
         if (!conversationId) return
-        if (idAmi) {
-            router.push({
-                pathname: dansAccueil ? '/(tabs)/home/profil/[membreId]' : '/(tabs)/inbox/profil/[membreId]',
-                params: { membreId: idAmi },
-            } as any)
-            return
-        }
         router.push({
             pathname: dansAccueil ? '/(tabs)/home/conversation/infos/[conversationId]' : '/(tabs)/inbox/infos/[conversationId]',
             params: { conversationId },
         } as any)
-    }, [conversationId, dansAccueil, idAmi])
+    }, [conversationId, dansAccueil])
     const titreAffiche = conversation?.ami.pseudo ?? titre ?? ''
     const photoEntete = conversation?.ami.fp_url
 
@@ -77,7 +66,7 @@ export default function Conversation(){
                 onPress={ouvrirInfos}
                 hitSlop={8}
                 accessibilityRole="button"
-                accessibilityLabel={idAmi ? t('infos.openProfile', { pseudo: titreAffiche }) : t('infos.open', { nom: titreAffiche })}
+                accessibilityLabel={t('infos.open', { nom: titreAffiche })}
                 style={{ flexDirection: 'row', alignItems: 'center', gap: 8, maxWidth: 240 }}
             >
                 <ProfilPic size={32} pfp={photoEntete} />
@@ -89,7 +78,7 @@ export default function Conversation(){
                 </View>
             </TouchableOpacity>
         ),
-    }), [ouvrirInfos, idAmi, t, titreAffiche, photoEntete, colors.text, colors.muted, fonts.title])
+    }), [ouvrirInfos, t, titreAffiche, photoEntete, colors.text, colors.muted, fonts.title])
 
     // Tapping someone's avatar in a group opens their profile, in the same stack
     const ouvrirProfil = (membreId: string) => {
