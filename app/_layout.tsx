@@ -43,6 +43,8 @@ import { SettingsProvider, useSettings } from '@/contextes/contexteSettings';
 import { SignalementsProvider } from '@/contextes/contexteSignalements';
 import { TimelineProvider } from '@/contextes/contexteTimeline';
 import { initLocalization } from '@/locales/initLocale';
+import { configurerAffichagePremierPlan } from '@/functions/notificationsPush';
+import useNotificationsPush from '@/hooks/useNotificationsPush';
 
 // This is the default configuration
 configureReanimatedLogger({
@@ -53,6 +55,9 @@ configureReanimatedLogger({
 export { ErrorBoundary } from 'expo-router';
 
 SplashScreen.preventAutoHideAsync();
+
+// User story 45: in the foreground, a push is shown as the app's toast, not as a system alert.
+configurerAffichagePremierPlan();
 
 export default function RootLayout() {
   return (
@@ -128,6 +133,9 @@ function RootLayoutNav() {
   const { navTheme } = usePalette();
   const { state } = useAuth()
   const pathname = usePathname()
+  // User story 45: push registration, toast of a push received while the app is open,
+  // and opening a tapped notification.
+  useNotificationsPush()
 
   useEffect(() => {
     if (state !== 'authenticated') return
@@ -164,46 +172,7 @@ function RootLayoutNav() {
     }
   }, [pathname, state])
 
-  /* const enregistrerPushToken = async (accessToken: string)=>{
-    
-    if(!Device.isDevice){
-      alert('notifications push requièrent un appareil physique')
-      return
-    }
-
-    const {status: statusExistant} = await Notifs.getPermissionsAsync()
-    let statusFinal = statusExistant
-
-    if(statusExistant !== 'granted'){
-      const {status} = await Notifs.requestPermissionsAsync()
-      statusFinal = status
-    }
-
-    if(statusFinal !== 'granted'){
-      alert('permission aux notifications push non-accordée')
-      return
-    }
-
-    const pushToken = (await Notifs.getExpoPushTokenAsync()).data
-    //log('pushToken', pushToken)
-
-    try {
-      await api.post('/notifications/push_token', 
-        {
-          push_token: pushToken
-        },
-        {
-          headers:{
-            'Authorization':`Bearer ${accessToken}`
-          }
-        }
-      )
-      return true
-    } catch (error) {
-      catcher(error, 'problème survenu lors de l\'ouverture')
-      return false
-    }
-  } */
+  // Push registration: see enregistrerPushToken (functions/notificationsPush), called by useNotificationsPush.
 
   if (state === 'loading') {
     return <ChargementEcran />;
