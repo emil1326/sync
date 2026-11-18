@@ -1,5 +1,7 @@
 import { useState } from 'react'
-import { StyleSheet, TouchableOpacity, View } from 'react-native'
+import { ActivityIndicator, StyleSheet, TouchableOpacity, View } from 'react-native'
+import * as ImagePicker from 'expo-image-picker'
+import { useTranslation } from 'react-i18next'
 
 import Icon from "@react-native-vector-icons/ionicons"
 
@@ -10,12 +12,31 @@ import VoiceRecorderButton from './voiceRecorderButton'
 type Props = {
     onEnvoyerTexte: (texte: string) => Promise<void> | void
     onEnvoyerVocal: (uri: string, dureeSecondes: number) => Promise<void> | void
+    /** a photo picked from the library */
+    onEnvoyerImage?: (photo: { uri: string, mimeType?: string, nomFichier?: string }) => Promise<void> | void
 }
 
-export default function MessageInput({ onEnvoyerTexte, onEnvoyerVocal }: Props){
+export default function MessageInput({ onEnvoyerTexte, onEnvoyerVocal, onEnvoyerImage }: Props){
     const {colors} = usePalette()
+    const { t } = useTranslation('inbox')
     const [texte,setTexte] = useState('')
     const [enEnvoi, setEnEnvoi] = useState(false)
+    const [envoiPhoto, setEnvoiPhoto] = useState(false)
+
+    // Photo: picked from the library (no permission needed on recent iOS/Android),
+    // sent right away. Quality 0.7: a lighter file, still sharp on a phone.
+    const choisirPhoto = async () => {
+        if (!onEnvoyerImage || envoiPhoto) return
+        const resultat = await ImagePicker.launchImageLibraryAsync({ mediaTypes: 'images', quality: 0.7 })
+        if (resultat.canceled || !resultat.assets?.[0]) return
+        const photo = resultat.assets[0]
+        setEnvoiPhoto(true)
+        try {
+            await onEnvoyerImage({ uri: photo.uri, mimeType: photo.mimeType, nomFichier: photo.fileName ?? undefined })
+        } finally {
+            setEnvoiPhoto(false)
+        }
+    }
 
     const envoyer = async () => {
         const t = texte.trim()
@@ -34,6 +55,21 @@ export default function MessageInput({ onEnvoyerTexte, onEnvoyerVocal }: Props){
 
     return (
         <View style= {[styles.conteneur, {backgroundColor: colors.card, borderTopColor: colors.border}]}>
+            {onEnvoyerImage && (
+                <TouchableOpacity
+                    onPress={choisirPhoto}
+                    disabled={envoiPhoto}
+                    hitSlop={6}
+                    accessibilityRole="button"
+                    accessibilityLabel={t('photo.send')}
+                    accessibilityState={{ busy: envoiPhoto }}
+                    style={styles.boutonPhoto}
+                >
+                    {envoiPhoto
+                        ? <ActivityIndicator color={colors.muted} />
+                        : <Icon name="image-outline" size={26} color={colors.text} />}
+                </TouchableOpacity>
+            )}
              <TextInputAbs
                 value={texte}
                 onChangeText={setTexte}
@@ -67,6 +103,7 @@ const styles = StyleSheet.create({
         borderTopWidth: 1,
     },
     input: { flex: 1, maxHeight: 100 },
+    boutonPhoto: { width: 36, height: 48, alignItems: 'center', justifyContent: 'center' },
     boutonEnvoyer: {
         width: 40,
         height: 40,

@@ -24,5 +24,16 @@
 		"cancel": "Annuler",
 		"deleted": "Conversation supprimée",
 		"deleteFailed": "Impossible de supprimer la conversation"
+	},
+	"photo": {
+		"send": "Envoyer une photo",
+		"open": "Voir la photo",
+		"close": "Fermer la photo",
+		"sendFailed": "La photo n'a pas pu être envoyée"
+	},
+	"seenBy": "Vu par {{noms}}",
+	"preview": {
+		"photo": "📷 Photo",
+		"voice": "🎤 Message vocal"
 	}
 }

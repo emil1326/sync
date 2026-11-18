@@ -9,6 +9,7 @@ import { convertirTimestampHeure } from '@/functions/convertirTimestamp'
 import { Message } from '@/types/messaging'
 
 import ProfilPic from './pfp'
+import ImageMessageBubble from './imageMessageBubble'
 import VoiceMessageBubble from './voiceMessageBubble'
 
 const TAILLE_AVATAR = 28
@@ -41,10 +42,14 @@ function MessageBubble({message,estDeMoi,groupe = false,afficherAuteur = false,o
                     ? { backgroundColor: colors.secondary, borderBottomRightRadius: 4 }
                     : { backgroundColor: colors.card, borderBottomLeftRadius: 4 },
                 avecAuteur && styles.bulleGroupe,
+                // a photo almost fills its bubble
+                message.type === 'image' && styles.bulleImage,
             ]}
         >
             {message.type === 'vocal'
                 ? <VoiceMessageBubble message={message} estDeMoi={estDeMoi} />
+                : message.type === 'image'
+                ? <ImageMessageBubble message={message} />
                 : (
                     <Text style={{ color: estDeMoi ? 'white' : colors.text, fontFamily: fonts.body, fontSize: 15 }}>
                         {message.contenu}
@@ -54,6 +59,7 @@ function MessageBubble({message,estDeMoi,groupe = false,afficherAuteur = false,o
             <Text
                 style={[
                     styles.heure,
+                    message.type === 'image' && styles.heureImage,
                     { color: estDeMoi ? 'rgba(255,255,255,0.7)' : colors.muted, fontFamily: fonts.body },
                 ]}
             >
@@ -116,6 +122,7 @@ function memesProps(avant: Props, apres: Props) {
         && a.lu === b.lu
         && a.contenu === b.contenu
         && a.audioUrl === b.audioUrl
+        && a.imageUrl === b.imageUrl
         && a.auteurPseudo === b.auteurPseudo
         && a.auteurFpUrl === b.auteurFpUrl
         && avant.estDeMoi === apres.estDeMoi
@@ -144,5 +151,7 @@ const styles = StyleSheet.create({
     },
     // the avatar column already takes some width
     bulleGroupe: { maxWidth: '85%' },
+    bulleImage: { paddingHorizontal: 4, paddingTop: 4, paddingBottom: 6 },
+    heureImage: { paddingRight: 6 },
     pseudo: { fontSize: 11, marginTop: 3, marginLeft: 4 },
 })

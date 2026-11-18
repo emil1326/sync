@@ -47,7 +47,8 @@
 			"event": "One of your events changed",
 			"friendship": "You have a new friend",
 			"friendRequest": "New friend request",
-			"other": "New notification"
+			"other": "New notification",
+			"message": "New message"
 		},
 		"tapToOpen": "Tap to view"
 	}

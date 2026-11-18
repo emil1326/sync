@@ -13,6 +13,8 @@ import { useMembre } from '@/contextes/contexteMembre'
 import MessageBubble from '@/components/messageBubble'
 import ProfilPic from '@/components/pfp'
 import MessageInput from '@/components/messageInput'
+import LigneVus from '@/components/ligneVus'
+import { Vu } from '@/types/messaging'
 import catcher from '@/functions/catcher'
 
 export default function Conversation(){
@@ -23,7 +25,7 @@ export default function Conversation(){
     const {conversationId, titre } = useLocalSearchParams<{conversationId: string, titre?: string}>()
 
     const { membre } = useMembre()
-    const {messages,conversations,messagesChargesPour,ouvrirConversation,fermerConversation,envoyerMessage} = useConversations()
+    const {messages,vus,conversations,messagesChargesPour,ouvrirConversation,fermerConversation,envoyerMessage} = useConversations()
     // Newest first for the inverted list: it opens at the bottom, with no scroll to animate.
     // Only this conversation's (the previous one's are kept until the new ones arrive).
     const donnees = useMemo(
@@ -136,6 +138,26 @@ export default function Conversation(){
             catcher(error,"erreur d'envoi du message vocal")
         }
     }
+    const envoyerImage = async (photo: { uri: string, mimeType?: string, nomFichier?: string }) => {
+        if (!conversationId) return
+        try {
+            await envoyerMessage(conversationId, { type: 'image', ...photo })
+        } catch (error) {
+            catcher(error, t('photo.sendFailed'))
+        }
+    }
+
+    // Group conversations: who has seen up to each message (avatars under it, like
+    // Messenger). Not under their own message: they obviously saw it.
+    const lecteursParMessage = useMemo(() => {
+        const parMessage = new Map<string, Vu[]>()
+        if (!estGroupe) return parMessage
+        for (const vu of vus) {
+            if (!vu.messageId) continue
+            parMessage.set(vu.messageId, [...(parMessage.get(vu.messageId) ?? []), vu])
+        }
+        return parMessage
+    }, [vus, estGroupe])
 
     return (
         <Animated.View
@@ -156,17 +178,23 @@ export default function Conversation(){
                 keyboardShouldPersistTaps="handled"
                 // drag the messages down to close the keyboard (iOS: it follows the finger)
                 keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
-                renderItem={({ item, index }) => (
-                    <MessageBubble
-                        message={item}
-                        estDeMoi={item.auteurId === membre.idPublique}
-                        groupe={estGroupe}
-                        // avatar and pseudo only on the last message of a run from the same person
-                        // (inverted list: the next, newer message is the one before)
-                        afficherAuteur={donnees[index - 1]?.auteurId !== item.auteurId}
-                        onPressAuteur={() => ouvrirProfil(item.auteurId)}
-                    />
-                )}
+                renderItem={({ item, index }) => {
+                    const lecteurs = (lecteursParMessage.get(item.id) ?? []).filter((l) => l.membreId !== item.auteurId)
+                    return (
+                        <>
+                            <MessageBubble
+                                message={item}
+                                estDeMoi={item.auteurId === membre.idPublique}
+                                groupe={estGroupe}
+                                // avatar and pseudo only on the last message of a run from the same person
+                                // (inverted list: the next, newer message is the one before)
+                                afficherAuteur={donnees[index - 1]?.auteurId !== item.auteurId}
+                                onPressAuteur={() => ouvrirProfil(item.auteurId)}
+                            />
+                            {lecteurs.length > 0 && <LigneVus lecteurs={lecteurs} />}
+                        </>
+                    )
+                }}
                 // nothing while loading (it used to flash "write the first message");
                 // flipped back since the list is inverted
                 ListEmptyComponent={charge ? (
@@ -180,7 +208,7 @@ export default function Conversation(){
             </Pressable>
 
             {/* pas de marge en bas : la barre d'onglets tient déjà compte du bas de l'écran */}
-            <MessageInput onEnvoyerTexte={envoyerTexte} onEnvoyerVocal={envoyerVocal} />
+            <MessageInput onEnvoyerTexte={envoyerTexte} onEnvoyerVocal={envoyerVocal} onEnvoyerImage={envoyerImage} />
         </Animated.View>
 
     )
