@@ -350,14 +350,7 @@ export default function ProfilEcran(){
         }
     })  
 //#endregion
-
-const animatedStatus = useAnimatedStyle(() => (
-    {
-        width: texteStatutVisible ? 'auto' : withSpring(0 , withSpringConfig),
-    }
-))
     
-
     return (  
         <View style={{height:'100%', width:'100%', backgroundColor:colors.background}}>
             {avertissementVisible && <Animated.View style={[avertissementAnime,{position:'absolute', zIndex:20, height:'100%', width:'100%',alignItems:'center', justifyContent:'center', backgroundColor:colors.card }]}>
@@ -388,19 +381,17 @@ const animatedStatus = useAnimatedStyle(() => (
                                 <MemberCode code={membre.idPublique??''}/>
                             </View>                            
                             <Text style={[{color:colors.muted, fontSize:14, paddingLeft:4, fontFamily:fonts.body}]}>{t('memberSince', { date: convertirTimestampDateCourte(membre.tempsCreation) })}</Text>
-                            <AnimatedTouchableOpacity
+                            <TouchableOpacity
                                 accessibilityRole="button"
                                 accessibilityLabel={t('availability.change')}
                                 accessibilityState={{ expanded: menuStatutVisible }}
                                 onPress={() => setMenuStatutVisible(true)}
-                                style={[
-
-                                    { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 8, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, borderWidth: 1, borderColor: membre.statutDisponibilite === 'disponible' ? '#35B86B' : membre.statutDisponibilite === 'silencieux' ? '#E6B422' : '#E05252', backgroundColor: colors.card }]}
+                                style={{ alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 8, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, borderWidth: 1, borderColor: membre.statutDisponibilite === 'disponible' ? '#35B86B' : membre.statutDisponibilite === 'silencieux' ? '#E6B422' : '#E05252', backgroundColor: colors.card }}
                             >
                                 <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: membre.statutDisponibilite === 'disponible' ? '#35B86B' : membre.statutDisponibilite === 'silencieux' ? '#E6B422' : '#E05252' }} />
                                 {texteStatutVisible && <Text style={{ color: colors.text, fontFamily: fonts.body, fontSize: 13 }}>{t(`availability.${membre.statutDisponibilite}`)}</Text>}
                                 <Icon name="chevron-down" size={16} color={colors.muted} />
-                            </AnimatedTouchableOpacity>
+                            </TouchableOpacity>
                         </Animated.View>
                         {/* TODO: avoir un bouton avec le compte des amis qui affiche la liste des amis */}
                         {/* Bio */}
