@@ -5,6 +5,7 @@
   "scripts": {
     "prestart": "node scripts/update-api-base-url.js",
     "start": "expo start",
+    "start:prod": "node scripts/update-api-base-url.js && expo start --no-dev --minify",
     "android": "expo run:android",
     "ios": "expo run:ios",
     "lint": "expo lint",
@@ -26,6 +27,7 @@
     "@tanstack/react-query": "^5.104.0",
     "@vvo/tzdb": "^6.198.0",
     "axios": "^1.9.0",
+    "babel-plugin-react-compiler": "^1.0.0",
     "expo": "~58.0.26",
     "expo-asset": "~58.0.18",
     "expo-audio": "~58.0.12",

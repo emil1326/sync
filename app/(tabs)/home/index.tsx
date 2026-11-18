@@ -680,7 +680,8 @@ export default function Home() {
     const enCache = cacheJoursRef.current.get(`${start.toISODate()}/${fin.toISODate()}`)
     if (!enCache) return
     setUserEvents(enCache);
-      setJourMembre(start);
+    // same day: the same object, so nothing redraws for it
+    setJourMembre((jour) => (jour?.hasSame(start, 'day') ? jour : start));
   };
 
   /**
@@ -935,6 +936,19 @@ export default function Home() {
   // event covers it (e.g. the one just created on it), it's dropped when the member's
   // events arrive (modifierEvenementsMembreFetched).
 
+  // Leaving the screen (another tab, a pushed screen): polling paused, not destroyed, so
+  // coming back only asks the server what changed.
+  function pauseALaSortie() {
+    // This screen's exact position, given back on return (it was only recorded when
+    // the displayed day changed, so coming back from e.g. the creation jumped to an
+    // older position, away from a range picked on the same day).
+    if (accueilActifRef.current) offsetAccueilRef.current = offsetX.get()
+    accueilActifRef.current = false
+    accueilActif.set(false)
+    userEventsRefresh.current?.stop()
+    friendsEventsRefresh.current?.stop()
+  }
+
   useFocusEffect(
     useCallback(() => {
       const now = DateTime.now();
@@ -951,15 +965,31 @@ export default function Home() {
       accueilActifRef.current = true
       accueilActif.set(true)
       fenetreEnCoursRef.current =`${debutFenetre.toISODate()}/${debutFenetre.plus({ days: JOURS_FENETRE }).toISODate()}`
-      setTodayDateTime(jourAffiche.startOf('day'));
-      setTempsClassement(now);
+      // Coming back to the tab: only what changed is updated, so the timeline doesn't
+      // redraw and re-rank every friend each time (same day → same object; the ranking
+      // by "time from now" is redone if it's over a minute old).
+      setTodayDateTime((jour) => (jour?.hasSame(jourAffiche, 'day') ? jour : jourAffiche.startOf('day')));
+      setTempsClassement((avant) => (now.diff(avant).as('seconds') < 60 ? avant : now));
       dateAujShared.set(jourAffiche.toMillis());
       jourDemandeRef.current = jourAffiche.startOf('day');
       afficherDepuisCache(jourAffiche);
       //chargerEvenements(now, now)
 
+      // Back on the tab: the pollers paused when it was left resume. Same query, so
+      // the server only sends the events again if something changed (before, both were
+      // rebuilt with a full reload each time, which re-ranked every friend).
+      const paramsMembre = paramsPlage(debutFenetre, debutFenetre.plus({ days: JOURS_FENETRE }))
+      if (userEventsRefresh.current && !userEventsRefresh.current.estArrete()
+        && friendsEventsRefresh.current && !friendsEventsRefresh.current.estArrete()) {
+        userEventsRefresh.current.reprendre(paramsMembre)
+        friendsEventsRefresh.current.reprendre(paramsAmis(debutFenetre))
+        return pauseALaSortie
+      }
+      userEventsRefresh.current?.destroy()
+      friendsEventsRefresh.current?.destroy()
+
       userEventsRefresh.current = new AutoRefresh(api, '/evenements/', {
-        extraParams: paramsPlage(debutFenetre, debutFenetre.plus({ days: JOURS_FENETRE })),
+        extraParams: paramsMembre,
         onData: modifierEvenementsMembreFetched,
         onError: (error) => {
           log("impossible de charger les évènements du membre", error)
@@ -980,18 +1010,16 @@ export default function Home() {
         }
       })      
 
-      return () => {
-        // This screen's exact position, given back on return (it was only recorded when
-        // the displayed day changed, so coming back from e.g. the creation jumped to an
-        // older position, away from a range picked on the same day).
-        if (accueilActifRef.current) offsetAccueilRef.current = offsetX.get()
-        accueilActifRef.current = false
-        accueilActif.set(false)
-        userEventsRefresh.current?.destroy()
-        friendsEventsRefresh.current?.destroy()
-      }
+      return pauseALaSortie
     }, [])
   );
+
+  // The screen is gone for good (sign-out...): the pollers too.
+  useEffect(() => () => {
+    userEventsRefresh.current?.destroy()
+    friendsEventsRefresh.current?.destroy()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
 
   const s = StyleSheet.create({
