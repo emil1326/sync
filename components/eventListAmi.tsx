@@ -27,6 +27,7 @@ import { paramsPlage } from "@/functions/evenementsMembre";
 import log from "@/functions/log";
 import { Participant } from "@/types/invites";
 import { DateTime } from "luxon";
+import Ionicons from "@react-native-vector-icons/ionicons";
 import FriendLine from "./friendLine";
 
 export type FriendAPIRes = {
@@ -111,6 +112,15 @@ function EventListAmiContent() {
 
     const onPressSelect = useFriendList('select')
     const onPressConsult = useFriendList('consult')
+
+    // Friends picked in this modal (the ones already invited aren't in the list)
+    const nbSelectionnes = useMemo(() => {
+        const dejaInvites = new Set([...invites.map(invite => invite.id), ...excludedFriendIds])
+        return [...idsSelec].filter(id => !dejaInvites.has(id as string)).length
+    }, [idsSelec, invites, excludedFriendIds])
+    // Existing event: invited right away. Event being created: only added to the draft.
+    const urlInvitation = Array.isArray(inviterUrl) ? inviterUrl[0] : inviterUrl
+    const inviteDirect = !!urlInvitation && urlInvitation !== 'undefined'
 
     const inviteAndDismiss = useCallback(() => {
         const amisSelec = amis.filter(ami => idsSelec.has(ami.id))
@@ -203,7 +213,7 @@ function EventListAmiContent() {
 
     return (
         <ModalBase>
-            <View style={{ height: '100%', width: '100%' }}>
+            <View style={{ flex: 1, width: '100%' }}>
                 <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center' }}>
                     <View style={{ width: '100%', alignItems: 'center' }}>
                         <Text style={{ color: colors.text, fontFamily: fonts.body, fontSize: 20 }}>{t('list.title')}</Text>
@@ -216,6 +226,7 @@ function EventListAmiContent() {
                     colors={[colors.primary, 'transparent']}
                 />
                 {amis.length > 0 && <SectionList
+                    style={{ flex: 1 }}
                     sections={friendSections}
                     keyExtractor={item => item.id}
                     contentContainerStyle={{ paddingTop: 12, paddingBottom: 16 }}
@@ -266,7 +277,7 @@ function EventListAmiContent() {
                         
                         const selectionne = select && idsSelec.has(item.id)
                         return (
-                            <FriendLine friend={item} listType={type} selected={selectionne} indisponible={select && idsIndisponibles.has(item.id)} suggestedIntervals={item.suggestedIntervals ?? []} onPress={() => {
+                            <FriendLine friend={item} listType={type} selected={selectionne} selectionnable={select} indisponible={select && idsIndisponibles.has(item.id)} suggestedIntervals={item.suggestedIntervals ?? []} onPress={() => {
                                 if (select) {
                                     setIdsSelec(prev => {
                                         const next = new Set(prev)
@@ -280,6 +291,37 @@ function EventListAmiContent() {
                         )
                     }}
                 />}
+                {/* Confirm button, always visible (the ✓ only shows when the modal is full screen).
+                    Closing the modal another way (tap outside, swipe down) cancels. */}
+                {select && amis.length > 0 && (
+                    <View style={{ paddingTop: 8, paddingBottom: 12 }}>
+                        <TouchableOpacity
+                            disabled={nbSelectionnes === 0}
+                            onPress={() => {
+                                inviteAndDismiss()
+                                modalEvents.emitClosing()
+                            }}
+                            accessibilityRole="button"
+                            accessibilityState={{ disabled: nbSelectionnes === 0 }}
+                            style={{
+                                height: 48,
+                                borderRadius: 12,
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                flexDirection: 'row',
+                                gap: 8,
+                                backgroundColor: nbSelectionnes > 0 ? colors.primary : colors.border,
+                            }}
+                        >
+                            {nbSelectionnes > 0 && <Ionicons name={inviteDirect ? 'paper-plane' : 'person-add'} size={18} color="white" />}
+                            <Text style={{ color: nbSelectionnes > 0 ? 'white' : colors.muted, fontFamily: fonts.title, fontSize: 16 }}>
+                                {nbSelectionnes === 0
+                                    ? t('list.pickFriends')
+                                    : t(inviteDirect ? 'list.inviteCount' : 'list.addCount', { count: nbSelectionnes })}
+                            </Text>
+                        </TouchableOpacity>
+                    </View>
+                )}
                 {amis.length < 1 &&
                     <View style={{ height: '100%', width: '100%', justifyContent: 'center', alignItems: 'center', gap: 8 }}>
                         <Text style={{ color: colors.text, fontFamily: fonts.title, fontSize: 18 }}>{t('list.emptyState')}</Text>
