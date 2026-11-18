@@ -1041,3 +1041,81 @@ L'utilisation du voile est cohÃ©rente avec `creationEvenement.tsx` et `creationI
 
 ## Ã€ faire cÃ´tÃ© serveur (par l'user)
 L'endpoint `GET /admin/os_metrics/points` n'existe pas encore : "je get aucuns points". Il faut ajouter `getPointsAverageBetween` dans `metricsModel` et la route correspondante (SQL fourni dans les messages prÃ©cÃ©dents).
+
+# HANDOFF - Date du jour sur l'accueil au retour dans l'application (18/11/2026)
+
+## Fait
+- `app/(tabs)/home/index.tsx` conservait le jour pr?c?demment affich? lors du focus. Ajout d'un traitement du cycle d'?tat de l'application : apr?s un passage en arri?re-plan, l'accueil revient ? aujourd'hui s'il est d?j? actif, ou marque ce retour pour le prochain focus.
+- La s?lection faite en naviguant dans le calendrier reste conserv?e lors des transitions internes; le retour au premier plan de l'application r?initialise l'accueil au jour courant.
+- Aucun changement API requis.
+
+## V?rifications
+- `npx.cmd eslint 'app/(tabs)/home/index.tsx'` : 0 erreur, 8 avertissements pr?existants dans ce fichier.
+- Tests et typecheck non ex?cut?s.
+
+# HANDOFF - Fenêtre initiale de l'accueil (18/11/2026)
+
+## Fait
+- Au premier focus, l'accueil activait son écouteur de scroll avant de centrer l'offset. L'offset initial à zéro pouvait donc être lu comme le premier jour de la fenêtre (J-3) et remplacer la date du jour.
+- L'initialisation de la fenêtre et de l'offset est maintenant faite avant d'activer le traitement du défilement.
+- Aucun changement API requis.
+
+## Vérifications
+- `npx.cmd eslint 'app/(tabs)/home/index.tsx'` : 0 erreur, 8 avertissements existants.
+- Pas de test sur appareil effectué.
+
+# HANDOFF - Glissement de fenêtre par trois jours (18/11/2026)
+
+## Fait
+- La fenêtre de 7 jours avance ou recule maintenant de 3 jours lorsqu'on approche de son bord dans l'accueil. Le décalage est compensé pour garder le même instant visible; les appels API gardent leurs paramètres début/fin sur 7 jours.
+- Aucun changement API requis.
+
+## Vérifications
+- `npx.cmd eslint 'app/(tabs)/home/index.tsx'` : 0 erreur, 8 avertissements existants.
+- Pas de test sur appareil effectué.
+
+# HANDOFF - Libellé du statut compact dans le profil (18/11/2026)
+
+## Fait
+- Dans `app/(tabs)/profile/index.tsx`, le libellé du bouton de disponibilité est visible 5 secondes à chaque focus du profil, puis masqué pour ne garder que le point coloré et la flèche. Le délai est annulé quand on quitte l'écran.
+- Aucun changement API requis.
+
+## Vérifications
+- ESLint sur le fichier : mêmes 18 erreurs et 2 avertissements que la version HEAD (problèmes préexistants); aucun diagnostic supplémentaire.
+- Pas de test sur appareil effectué.
+
+# HANDOFF - Heure d'expiration des invitations dans le fil (18/11/2026)
+
+## Fait
+- `components/notificationItem.tsx` convertit maintenant l'expiration UTC envoyée par l'API vers le fuseau choisi dans les paramètres de l'application avant d'afficher l'heure.
+- Vérification en lecture seule de `sync_api` : son format de date d'expiration est un ISO sans offset, interprété comme UTC par l'app. Aucun changement API requis.
+
+## Vérifications
+- `npx.cmd eslint components/notificationItem.tsx` : 0 erreur, 3 avertissements préexistants.
+- Pas de test sur appareil effectué.
+
+# HANDOFF - Blocage directionnel d'un ami (18/11/2026)
+
+## Fait
+- Profil ami : bouton Bloquer/Débloquer, état chargé depuis l'API et erreurs affichées via le catcher.
+- `sync_api` : migration `20261119000000_CREATE_blocages.js`, table directionnelle `blocages` (`id_bloqueur`, `id_bloque`), endpoint `PATCH /amis/:idami_publique/blocage`, et refus en 404 de l'accès au profil par la personne bloquée. Le bloqueur conserve l'accès et peut débloquer depuis le profil.
+- `bd/schema.sql` mis à jour pour les nouvelles installations. La migration n'a pas été appliquée à une base.
+
+## Vérifications
+- ESLint du profil ami : 0 erreur, 1 avertissement préexistant (`rechargement`). JSON FR/EN valide.
+- `node --check` réussi sur les deux routes et la migration API. ESLint API non exécuté : `npx eslint` est resté bloqué sans sortie, commande interrompue.
+- Aucun test d'intégration ni sur appareil effectué.
+
+# HANDOFF - Restrictions entre membres bloqués (18/11/2026)
+
+## Fait
+- Les conversations privées à deux participants sont masquées des listes et recherches des deux membres; le middleware refuse aussi l'ouverture et l'envoi de messages. Un changement de blocage incrémente le numéro de version des conversations afin de rafraîchir les listes.
+- `verifierAmitieParticipants` refuse les membres bloqués dans les créations de conversation et les invitations/créations d'événements.
+- `fetchAmis` retire le bloqueur de la liste du membre bloqué et expose `bloque_par_moi` au bloqueur. Les sélecteurs d'invités, créneaux communs et widget de profil tiennent compte de cet état.
+- Les contrôles `/disponibilites/communes` et `/disponibilites/amis/:idpublique` refusent aussi les paires bloquées.
+
+## Vérifications
+- `node --check` réussi sur 8 fichiers JS de l'API, dont les routes/middlewares modifiés et la migration.
+- ESLint des fichiers app touchés : 0 erreur; avertissements présents dans le profil ami, eventListAmi et l'accueil.
+- `git diff --check` réussi dans les deux projets.
+- ESLint API non exécuté : `npx eslint` reste bloqué sans sortie dans sync_api. Migration non appliquée à la base; aucun test d'intégration/appareil exécuté.

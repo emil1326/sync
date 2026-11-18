@@ -8,6 +8,7 @@ import Animated, { FadeIn, FadeOut, LinearTransition, useAnimatedStyle, useShare
 import { useAPI } from "@/contextes/contexteAPI";
 import { useFont } from "@/contextes/contexteFont";
 import { Notification, NotificationAction, useNotifications } from "@/contextes/contexteNotifications";
+import { useSettings } from "@/contextes/contexteSettings";
 import { usePalette } from "@/contextes/contextePalette";
 
 import catcher from "@/functions/catcher";
@@ -54,6 +55,7 @@ export default function NotificationItem({ item, index, vu }: ItemProps) {
     const colorScheme = useColorScheme()
     const { api, APIBaseURL } = useAPI()
     const { notifRefresh } = useNotifications()
+    const { settings } = useSettings()
 
     // An event invitation: accepting goes through the shared decision logic, which
     // checks the member's schedule (conflict screen, review of the schedules).
@@ -282,7 +284,9 @@ export default function NotificationItem({ item, index, vu }: ItemProps) {
     const evenementQuitte = item.statut_metier === 'annulee'
     // The API sends "expired" instead of a date once the invitation has expired
     // (sync_api validateExpiration.js); convertUTCToLocal throws on it and crashed the list.
-    const expiration = item.expiration && !expired ? convertUTCToLocal(item.expiration) : undefined
+    const expiration = item.expiration && !expired
+        ? convertUTCToLocal(item.expiration, settings.timezone || 'local')
+        : undefined
 
     // Header label, seen without unfolding the card: the event is over, the invitation /
     // request expired, or when it will (only while unanswered). Philip — rectification.
