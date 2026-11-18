@@ -153,7 +153,7 @@ export default function InfosConversationEcran() {
         titrePhotos: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: -12, marginHorizontal: 4 },
         voirTout: { flexDirection: 'row', alignItems: 'center', gap: 2 },
         grille: { flexDirection: 'row', flexWrap: 'wrap', gap: ESPACE_GRILLE },
-        voile: { ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.5)' },
+        voile: { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.5)' },
         texteVoile: { color: 'white', fontFamily: fonts.title, fontSize: 20 },
         entete: { alignItems: 'center', gap: 8 },
         titre: { color: colors.text, fontFamily: fonts.title, fontSize: 22, textAlign: 'center' },
