@@ -29,5 +29,8 @@
         "file": "from .ics file",
         "google": "from Google Agenda",
         "outlook": "from Outlook Calendar"
-    }
+    },
+    "privacy":"privacy",
+    "messagePreview":"message text in notifications",
+    "messagePreviewFailed":"the setting couldn't be changed"
 }
