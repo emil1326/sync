@@ -94,18 +94,38 @@ export function ConversationsProvider({ children }: { children: React.ReactNode 
     const { api, APIBaseURL } = useAPI()
     const { state } = useAuth()
 
+    // Refs read by the polling callbacks; updated after each render (a ref can't be
+    // written during render)
     const baseRef = useRef(APIBaseURL)
-    baseRef.current = APIBaseURL
+    useEffect(() => {
+        baseRef.current = APIBaseURL
+    }, [APIBaseURL])
 
     const [conversations, setConversations] = useState<Conversation[]>([])
     const [messages, setMessages] = useState<Message[]>([])
     const [conversationOuverte, setConversationOuverte] = useState<string | undefined>()
     const [messagesChargesPour, setMessagesChargesPour] = useState<string | undefined>()
 
+    // Signed out: everything emptied. Done while rendering when the auth state changes
+    // (React's "adjusting state when a prop changes"), not in the effect below: a setState
+    // in an effect renders twice.
+    const [etatPrecedent, setEtatPrecedent] = useState(state)
+    if (state !== etatPrecedent) {
+        setEtatPrecedent(state)
+        if (state !== 'authenticated') {
+            setConversations([])
+            setMessages([])
+            setConversationOuverte(undefined)
+            setMessagesChargesPour(undefined)
+        }
+    }
+
     // APIProvider recrée son instance axios à chaque rendu : on passe toujours par la plus récente,
     // sinon AutoRefresh garderait une vieille instance sans intercepteurs (donc sans token)
     const apiRef = useRef(api)
-    apiRef.current = api
+    useEffect(() => {
+        apiRef.current = api
+    }, [api])
     const apiStable = useMemo(() => ({
         get: (...args: Parameters<AxiosInstance['get']>) => apiRef.current.get(...args),
     }) as unknown as AxiosInstance, [])
@@ -120,13 +140,10 @@ export function ConversationsProvider({ children }: { children: React.ReactNode 
         refreshConversations.current = undefined
 
         if (state !== 'authenticated') {
+            // (the state itself is emptied above, while rendering)
             refreshMessages.current?.stop()
             refreshMessages.current = undefined
             idOuvertRef.current = undefined
-            setConversations([])
-            setMessages([])
-            setConversationOuverte(undefined)
-            setMessagesChargesPour(undefined)
             return
         }
 
