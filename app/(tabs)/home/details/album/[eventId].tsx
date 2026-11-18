@@ -1,9 +1,10 @@
 import { Stack, useLocalSearchParams } from 'expo-router'
 import { useMemo, useState } from 'react'
-import { ActivityIndicator, FlatList, Image, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native'
+import { ActivityIndicator, FlatList, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import Icon from '@react-native-vector-icons/ionicons'
 
+import ImageChargement from '@/components/imageChargement'
 import SwitchAbs from '@/abstractions/switchAbs'
 import ApprobationsAlbum from '@/components/approbationsAlbum'
 import VisionneusePhotos from '@/components/visionneusePhotos'
@@ -102,7 +103,7 @@ export default function AlbumEvenementEcran() {
                         accessibilityLabel={item.statut === 'en_attente' ? t('album.pending') : t('album.open', { pseudo: item.auteur.pseudo })}
                         style={{ width: cote, height: cote, backgroundColor: colors.border }}
                     >
-                        <Image
+                        <ImageChargement
                             source={{ uri: `${APIBaseURL}${item.url}` }}
                             style={[StyleSheet.absoluteFill, item.statut === 'en_attente' && s.enAttente]}
                             resizeMode="cover"

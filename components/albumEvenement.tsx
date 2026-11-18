@@ -1,9 +1,10 @@
 import { router } from 'expo-router'
 import { useMemo, useState } from 'react'
-import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
+import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import Icon from '@react-native-vector-icons/ionicons'
 
+import ImageChargement from '@/components/imageChargement'
 import ApprobationsAlbum from '@/components/approbationsAlbum'
 import VisionneusePhotos from '@/components/visionneusePhotos'
 import { useAPI } from '@/contextes/contexteAPI'
@@ -95,7 +96,7 @@ export default function AlbumEvenement({ idEvenement }: Props) {
                         accessibilityLabel={p.statut === 'en_attente' ? t('album.pending') : t('album.open', { pseudo: p.auteur.pseudo })}
                         style={[s.case, { backgroundColor: colors.border }]}
                     >
-                        <Image
+                        <ImageChargement
                             source={{ uri: `${APIBaseURL}${p.url}` }}
                             style={[StyleSheet.absoluteFill, p.statut === 'en_attente' && s.enAttente]}
                             resizeMode="cover"

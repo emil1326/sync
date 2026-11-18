@@ -1,7 +1,8 @@
-import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import Icon from '@react-native-vector-icons/ionicons'
 
+import ImageChargement from '@/components/imageChargement'
 import ProfilPic from '@/components/pfp'
 import { useAPI } from '@/contextes/contexteAPI'
 import { useFont } from '@/contextes/contexteFont'
@@ -49,7 +50,7 @@ export default function ApprobationsAlbum({ lots, onToutAccepter, onRevoir }: Pr
                     <TouchableOpacity onPress={() => onRevoir(lot)} style={s.vignettes} accessibilityRole="button" accessibilityLabel={t('album.review')}>
                         {lot.photos.slice(0, MAX_VIGNETTES).map((p) => (
                             <View key={p.id} style={[s.vignette, { backgroundColor: colors.border }]}>
-                                <Image source={{ uri: `${APIBaseURL}${p.url}` }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+                                <ImageChargement tailleSpinner={16} source={{ uri: `${APIBaseURL}${p.url}` }} style={StyleSheet.absoluteFill} resizeMode="cover" />
                             </View>
                         ))}
                         {lot.photos.length > MAX_VIGNETTES && (

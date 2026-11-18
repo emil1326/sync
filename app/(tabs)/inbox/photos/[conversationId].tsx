@@ -1,9 +1,10 @@
 import { Stack, useFocusEffect, useLocalSearchParams } from 'expo-router'
 import { useCallback, useState } from 'react'
-import { ActivityIndicator, FlatList, Image, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native'
+import { ActivityIndicator, FlatList, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import Icon from '@react-native-vector-icons/ionicons'
 
+import ImageChargement from '@/components/imageChargement'
 import VisionneusePhotos from '@/components/visionneusePhotos'
 import { useAPI } from '@/contextes/contexteAPI'
 import { useFont } from '@/contextes/contexteFont'
@@ -67,7 +68,7 @@ export default function PhotosConversationEcran() {
                             accessibilityLabel={t('photos.open', { pseudo: item.auteur.pseudo })}
                             style={{ width: cote, height: cote, backgroundColor: colors.border }}
                         >
-                            <Image source={{ uri: `${APIBaseURL}${item.url}` }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+                            <ImageChargement source={{ uri: `${APIBaseURL}${item.url}` }} style={StyleSheet.absoluteFill} resizeMode="cover" />
                         </TouchableOpacity>
                     )}
                 />

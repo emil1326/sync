@@ -2,8 +2,9 @@ import Icon from '@react-native-vector-icons/ionicons'
 import { router, useFocusEffect, useLocalSearchParams, useNavigation, useSegments } from 'expo-router'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ActivityIndicator, Alert, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
+import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 
+import ImageChargement from '@/components/imageChargement'
 import ToastAbs from '@/abstractions/toastAbs'
 import BoutonAjouterAmi, { RelationAmitie } from '@/components/boutonAjouterAmi'
 import ProfilPic from '@/components/pfp'
@@ -47,6 +48,8 @@ type InfosConversation = {
 /**
  * A conversation's info, opened by tapping its title (like Messenger): its picture
  * and name, the event it belongs to (story #21) and its members with their role.
+ * A one-to-one chat shows the friend's profile instead of the members, and deletes the
+ * conversation on my side only.
  * A member opens their profile, the event opens its page. Used in the inbox stack
  * and in the home stack (event conversation opened from the event's page): each
  * screen opened from here stays in the same stack, so back arrows return here.
@@ -65,7 +68,7 @@ export default function InfosConversationEcran() {
     const [infos, setInfos] = useState<InfosConversation | null>(null)
     const [erreur, setErreur] = useState(false)
     const navigation = useNavigation()
-    const { rafraichirConversations } = useConversations()
+    const { rafraichirConversations, effacerConversation } = useConversations()
     const [suppressionEnCours, setSuppressionEnCours] = useState(false)
     // Photos sent in the conversation: the latest in a grid here, all of them one tap away
     const [photos, setPhotos] = useState<PhotoEvenement[]>([])
@@ -93,6 +96,32 @@ export default function InfosConversationEcran() {
                         navigation.dispatch({ type: 'POP', payload: { count: 2 } })
                     } catch (error) {
                         catcher(error, t('infos.deleteFailed'))
+                    } finally {
+                        setSuppressionEnCours(false)
+                    }
+                },
+            },
+        ])
+    }
+
+    /**
+     * One-to-one chat: deleted on my side only, after a confirmation (like swiping it in
+     * the list): the friend keeps it, and writing again starts from an empty conversation.
+     * Then back past the conversation's screen.
+     */
+    const supprimerDeMonCote = (nomAmi: string) => {
+        Alert.alert(t('delete.title'), t('delete.message', { nom: nomAmi }), [
+            { text: t('delete.cancel'), style: 'cancel' },
+            {
+                text: t('delete.confirm'),
+                style: 'destructive',
+                onPress: async () => {
+                    setSuppressionEnCours(true)
+                    try {
+                        await effacerConversation(conversationId)
+                        navigation.dispatch({ type: 'POP', payload: { count: 2 } })
+                    } catch (error) {
+                        catcher(error, t('delete.failed'))
                     } finally {
                         setSuppressionEnCours(false)
                     }
@@ -192,7 +221,9 @@ export default function InfosConversationEcran() {
         ? t('infos.eventGroup', { titre: infos.evenement.titre })
         : infos.titre || autres.map((p) => p.pseudo).join(', ') || t('infos.you')
     const photo = infos.couverture_url ?? (autres.length === 1 ? autres[0].fp_url : null)
-    const groupe = infos.participants.length > 2 || !!infos.titre
+    const groupe = infos.participants.length > 2 || !!infos.titre || !!infos.evenement
+    // one-to-one chat: the friend (none if they left)
+    const ami = groupe ? undefined : autres[0]
 
     const plageEvenement = (debut: string, fin: string) => {
         const d = local(debut)
@@ -230,8 +261,36 @@ export default function InfosConversationEcran() {
                 </>
             )}
 
-            <Text style={s.section}>{t('infos.membersTitle', { count: infos.participants.length })}</Text>
-            <View style={s.carte}>
+            {/* One-to-one chat: the friend's profile (and "add friend" if you no longer are) */}
+            {ami && (
+                <>
+                    <Text style={s.section}>{t('infos.profile')}</Text>
+                    <TouchableOpacity
+                        style={[s.carte, s.ligne]}
+                        onPress={() => ouvrirProfil(ami.id)}
+                        accessibilityRole="button"
+                        accessibilityLabel={t('infos.openProfile', { pseudo: ami.pseudo })}
+                    >
+                        <View style={s.icone}>
+                            <Icon name="person-outline" size={20} color={colors.text} />
+                        </View>
+                        <Text style={s.texte} numberOfLines={1}>{t('infos.viewProfile')}</Text>
+                        {ami.relation && ami.relation !== 'ami' && (
+                            <BoutonAjouterAmi
+                                key={`${ami.id}-${ami.relation}`}
+                                membreId={ami.id}
+                                relation={ami.relation}
+                                demandeId={ami.demande_id}
+                                compact
+                            />
+                        )}
+                        <Icon name="chevron-forward" size={20} color={colors.muted} />
+                    </TouchableOpacity>
+                </>
+            )}
+
+            {groupe && <Text style={s.section}>{t('infos.membersTitle', { count: infos.participants.length })}</Text>}
+            {groupe && <View style={s.carte}>
                 {infos.participants.map((p, index) => {
                     const contenu = (
                         <>
@@ -272,7 +331,7 @@ export default function InfosConversationEcran() {
                         </View>
                     )
                 })}
-            </View>
+            </View>}
 
             {/* Photos sent in the conversation: up to 9 here (the 9th shows how many more),
                 "See all" for the whole album */}
@@ -301,7 +360,7 @@ export default function InfosConversationEcran() {
                                     accessibilityLabel={derniere ? t('photos.seeAll') : t('photos.open', { pseudo: p.auteur.pseudo })}
                                     style={{ width: cote, height: cote, backgroundColor: colors.border }}
                                 >
-                                    <Image source={{ uri: `${APIBaseURL}${p.url}` }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+                                    <ImageChargement source={{ uri: `${APIBaseURL}${p.url}` }} style={StyleSheet.absoluteFill} resizeMode="cover" />
                                     {derniere && (
                                         <View style={s.voile}>
                                             <Text style={s.texteVoile}>+{reste + 1}</Text>
@@ -314,8 +373,25 @@ export default function InfosConversationEcran() {
                 </>
             )}
 
-            {/* Its admins can delete it (an event's can be created again from the event) */}
-            {infos.mon_role === 'editeur' && (
+            {/* One-to-one chat: deleted on my side only (the friend keeps it) */}
+            {!groupe && (
+                <TouchableOpacity
+                    style={s.supprimer}
+                    onPress={() => supprimerDeMonCote(ami?.pseudo ?? nom)}
+                    disabled={suppressionEnCours}
+                    accessibilityRole="button"
+                    accessibilityState={{ busy: suppressionEnCours }}
+                >
+                    {suppressionEnCours
+                        ? <ActivityIndicator color={colors.error} />
+                        : <Icon name="trash-outline" size={22} color={colors.error} />}
+                    <Text style={s.texteSupprimer}>{t('infos.deleteForMe')}</Text>
+                </TouchableOpacity>
+            )}
+
+            {/* A group's admins can delete it for everyone (an event's can be created again
+                from the event) */}
+            {groupe && infos.mon_role === 'editeur' && (
                 <TouchableOpacity
                     style={s.supprimer}
                     onPress={supprimer}
