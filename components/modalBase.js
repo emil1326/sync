@@ -22,7 +22,9 @@ import Ionicons from "@react-native-vector-icons/ionicons"
 
 const noop = () => {}
 
-export default function ModalBase({ children, canDismiss = true, onDismiss = noop }){
+// afficherBoutonPleinEcran: the round button (✕ / ✓) shown when the modal is full screen;
+// false for a modal that has its own confirm button (friend picker)
+export default function ModalBase({ children, canDismiss = true, onDismiss = noop, afficherBoutonPleinEcran = true }){
     const { colors } = usePalette()
     const {dismissButton, runDismissButtonAction} = useModal()
 
@@ -324,7 +326,7 @@ export default function ModalBase({ children, canDismiss = true, onDismiss = noo
             </Animated.View>
             </KeyboardAvoidingView>
             {/* Fullscreen options */}
-            <Animated.View style={[optionsAgrandirAnime, s.optionsRow]}>
+            {afficherBoutonPleinEcran && <Animated.View style={[optionsAgrandirAnime, s.optionsRow]}>
                 <TouchableOpacity 
                         onPress={() => {
                             runDismissButtonAction()
@@ -334,7 +336,7 @@ export default function ModalBase({ children, canDismiss = true, onDismiss = noo
                 >
                         <Ionicons name={dismissButton.icon} size={40} color={colors.text} />
                 </TouchableOpacity>
-            </Animated.View>
+            </Animated.View>}
             </View>
         </GestureHandlerRootView>
     )         

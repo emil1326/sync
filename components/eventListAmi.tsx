@@ -22,7 +22,6 @@ import { useFriendList } from "@/hooks/useFriendList";
 
 import { ListType } from "@/app/(modals)/listeAmis";
 import { useEventDraft } from "@/contextes/contexteEventDraft";
-import { useModal } from "@/contextes/contexteModals";
 import { paramsPlage } from "@/functions/evenementsMembre";
 import log from "@/functions/log";
 import { Participant } from "@/types/invites";
@@ -46,7 +45,6 @@ function EventListAmiContent() {
     const colorScheme = useColorScheme()
     const { invites } = useInvites()
     const { start, end, friendsSuggestions } = useEventDraft()
-    const {registerDismissButtonAction} = useModal()
 
     const { type, inviterUrl, hasMoreFriends: hasMoreFriendsParam, excludedFriendIds: excludedFriendIdsParam } = useLocalSearchParams() as { type: ListType; inviterUrl: string; hasMoreFriends: string; excludedFriendIds?: string }
     const select = type === 'select' || type === 'event'
@@ -132,11 +130,6 @@ function EventListAmiContent() {
 
     useEffect(() => {
         if (!select) return
-        return registerDismissButtonAction(inviteAndDismiss)
-    }, [select, registerDismissButtonAction, inviteAndDismiss])
-
-    useEffect(() => {
-        if (!select) return
 
         const applyPage = (page: { hasMore: boolean }) => {
             log("hasMore", page.hasMore)
@@ -212,8 +205,9 @@ function EventListAmiContent() {
 
 
     return (
-        <ModalBase>
-            <View style={{ flex: 1, width: '100%' }}>
+        // no ✓ in full screen: the Invite button below does its job
+        <ModalBase afficherBoutonPleinEcran={!select}>
+            <View style={{ height: '100%', width: '100%' }}>
                 <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center' }}>
                     <View style={{ width: '100%', alignItems: 'center' }}>
                         <Text style={{ color: colors.text, fontFamily: fonts.body, fontSize: 20 }}>{t('list.title')}</Text>
@@ -226,7 +220,6 @@ function EventListAmiContent() {
                     colors={[colors.primary, 'transparent']}
                 />
                 {amis.length > 0 && <SectionList
-                    style={{ flex: 1 }}
                     sections={friendSections}
                     keyExtractor={item => item.id}
                     contentContainerStyle={{ paddingTop: 12, paddingBottom: 16 }}
@@ -277,7 +270,7 @@ function EventListAmiContent() {
                         
                         const selectionne = select && idsSelec.has(item.id)
                         return (
-                            <FriendLine friend={item} listType={type} selected={selectionne} selectionnable={select} indisponible={select && idsIndisponibles.has(item.id)} suggestedIntervals={item.suggestedIntervals ?? []} onPress={() => {
+                            <FriendLine friend={item} listType={type} selected={selectionne} indisponible={select && idsIndisponibles.has(item.id)} suggestedIntervals={item.suggestedIntervals ?? []} onPress={() => {
                                 if (select) {
                                     setIdsSelec(prev => {
                                         const next = new Set(prev)
@@ -291,7 +284,7 @@ function EventListAmiContent() {
                         )
                     }}
                 />}
-                {/* Confirm button, always visible (the ✓ only shows when the modal is full screen).
+                {/* Confirm button, always visible: it replaces the ✓ of the full screen modal.
                     Closing the modal another way (tap outside, swipe down) cancels. */}
                 {select && amis.length > 0 && (
                     <View style={{ paddingTop: 8, paddingBottom: 12 }}>
