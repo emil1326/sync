@@ -4,6 +4,9 @@ export type Message = {
     id: string
     conversationId: string
     auteurId: string
+    /** pseudo and profile picture of the author (shown in group conversations) */
+    auteurPseudo?: string
+    auteurFpUrl?: string
     type: 'texte' | 'vocal'
     contenu?: string
     audioUrl?: string
@@ -26,6 +29,13 @@ export type Conversation = {
         auteurId: string
     }
     nonLus: number
+    titre?: string
+    /** the other members of the conversation (without me) */
+    participants?: {
+        id: string
+        pseudo: string
+        fp_url?: string
+    }[]
     /** Story #21: public id of the event this group conversation belongs to */
     evenementId?: string
 }
