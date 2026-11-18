@@ -52,5 +52,13 @@
 		"confirm": "Delete",
 		"cancel": "Cancel",
 		"failed": "Couldn't delete the conversation"
+	},
+	"photos": {
+		"title": "Photos",
+		"section": "Photos ({{count}})",
+		"seeAll": "See all",
+		"open": "Photo by {{pseudo}}",
+		"empty": "No photos sent in this conversation.",
+		"loadFailed": "Couldn't load the photos"
 	}
 }
