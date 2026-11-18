@@ -61,11 +61,13 @@
     "repeatedUntil": "event repeats every {{unit}} until:",
     "private": "private",
     "public": "public",
-    "participants": "participants"
+    "participants": "participants",
+    "removedOnConfirm_one": "{{count}} participant will be removed on ✓",
+    "removedOnConfirm_other": "{{count}} participants will be removed on ✓"
   },
   "participantRemoval": {
     "confirmTitle": "Remove this participant?",
-    "confirmMessage": "Do you want to remove {{pseudo}} from this event?",
+    "confirmMessage": "Are you sure? {{pseudo}} is already part of the event.",
     "cancel": "Cancel",
     "remove": "Remove"
   },

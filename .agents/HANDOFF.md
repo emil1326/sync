@@ -1282,3 +1282,116 @@ L'utilisation du voile est cohérente avec `creationEvenement.tsx` et `creationI
 
 ## À faire côté serveur (par l'user)
 L'endpoint `GET /admin/os_metrics/points` n'existe pas encore : "je get aucuns points". Il faut ajouter `getPointsAverageBetween` dans `metricsModel` et la route correspondante (SQL fourni dans les messages précédents).
+
+---
+
+## Ajout (18/11/2026) — après une création, retour sur la plage créée
+- User : après avoir créé un évènement, l'accueil revenait où il était avant la création
+  (il restaure sa position au focus) au lieu de la plage de l'évènement créé.
+- `events/creationEvents.ts` (nouveau) : canal « plage créée », même modèle que
+  calendrierEvents.
+- `components/creationEvenement.tsx` / `creationIndisponibilite.tsx` : la plage envoyée
+  est gardée (ref) et annoncée au moment de quitter après une création réussie (201 ou
+  écran de conflit « créé ») ; rien si « ajuster mon horaire ».
+- `app/(tabs)/home/index.tsx` : `allerALaPlageCreee` — bascule sur le jour créé (fenêtre
+  = jour − 3, comme les flèches), centre la plage dans les rangées (son début près de la
+  gauche si plus longue que l'écran), et l'enregistre comme position de l'accueil
+  (offsetAccueilRef) pour que le focus la remette. Abonnement unique via une ref sur le
+  dernier gestionnaire (zoom). Warnings lint préexistants du fichier nettoyés
+  (variables inutilisées, `Array<any>`, dépendance `maxY` ; exception justifiée pour
+  l'effet de focus).
+- Vérifs : eslint 0 erreur / 0 warning sur les 4 fichiers, tsc OK, jest 19/19.
+- À savoir : la PR #57 (sync) a été fermée sans fusion le 14/11 avec le commentaire
+  « Au refus, une proposition de postpone n'est pas proposé comme mentionné dans la
+  US. » ; `main` a avancé depuis (fichiers de création identiques, `timeline.tsx` diffère).
+
+---
+
+## Ajout (18/11/2026) — 2e pull de main (PR #60 à #72 d'Ismail)
+- Le 1er pull (d33ee0a) s'est fait sur `main` à d318063 (11 h 20) ; les PR #60–#72 + le
+  « temporary fix » ont été fusionnées dans `main` juste après. Fusionnées dans
+  `philip-dev-s1` au commit 1d4e31f.
+- Conflits résolus :
+  - `components/modalBase.js` : main a ajouté `afficherBoutonPleinEcran` (+ `boutonADroite`),
+    le même bouton que notre `afficherBoutonFermer` → on garde le nom de main, JSDoc de
+    toutes les props ; `app/(modals)/dataRenderer.tsx` passe `afficherBoutonPleinEcran`
+    (param `sansBoutonFermer: '1'` inchangé). `afficherBoutonFermer` n'existe plus.
+  - `locales/{fr,en}/events.json` : nos clés `postpone.*` + la section `album` de main.
+  - `app/(tabs)/home/index.tsx` (travail non commité) : l'effet de focus de main
+    (`pauseALaSortie`, `reprendre`) est gardé ; `allerALaPlageCreee` reste compatible
+    (chargerFenetre → setParams pendant la pause, le focus relit windowStartRef /
+    offsetAccueilRef). `HAUTEUR_RETOUR` (inutilisée) retirée, `AMIS_PAR_PAGE` de main gardé.
+- `npm ci` lancé (nouvelles dépendances de main : expo-image, expo-image-manipulator,
+  expo-media-library, babel-plugin-react-compiler).
+- Vérifs : tsc OK, jest 19/19, eslint 0 sur les 22 fichiers que la branche change vs main
+  et sur les fichiers non commités.
+
+---
+
+## Ajout (18/11/2026) — participants : rien n'est envoyé avant le ✓ du formulaire
+- Signalé : réinviter un participant qui a quitté « ne fonctionne pas ». Diagnostic (BD de dev) :
+  la réinvitation partait bien (invitation 143, participation, notification) — le vrai
+  problème était le comportement : « Inviter » envoyait tout de suite, même si la
+  modification était ensuite annulée. Nouvelle spécification de l'user (critères) :
+  - « Inviter » (modale d'amis) ajoute seulement à une liste en attente du formulaire ;
+    les invitations partent au ✓ ; quitter / annuler sans ✓ n'envoie rien.
+  - Dans Modifier, le créateur (éditeur) peut retirer n'importe quel participant ; X sur un
+    participant existant → confirmation « Êtes-vous sûr ? … fait déjà partie de
+    l'évènement. » ; X sur un ajout en attente → retiré tout de suite.
+  - Au ✓ : retraits + invitations d'un coup ; un changement de participants seul ne PATCH
+    pas l'évènement (pas de notification / réinvitation des autres).
+  - Choix de l'user : l'écran Détails devient en lecture seule (ni + ni X). Conséquence
+    assumée : un participant non éditeur qui a accepté ne peut plus inviter d'amis (US 8).
+- `functions/brouillonInvites.ts` (nouveau, testé par `tests/brouillonInvites.test.js`) :
+  règles pures du brouillon { invites, retraits } ; réajouter un participant retiré annule
+  le retrait (pas de nouvelle invitation).
+- `contextes/contexteInvites.tsx` : n'appelle plus l'API ; `ajouterInvite(amis)`,
+  `supprimerInvite(p)` (ajout en attente), `retirerParticipant(p)` (existant),
+  `retraits`, `resetInvites` vide les deux.
+- `hooks/useFriendList.tsx` / `components/eventListAmi.tsx` : plus de param `inviterUrl` ;
+  le bouton de la modale est toujours « Ajouter (n) ».
+- `components/participantsListe.tsx` : `peutGererParticipants` = formulaire (création, ou
+  Modifier par un éditeur) → + et X ; sinon lecture seule (liste du serveur seulement,
+  sans les brouillons). Affiche serveur + ajouts − retraits ; hauteur sans la ligne du +
+  en lecture seule.
+- `components/participantLigne.tsx` : props `existant` / `onRetirer` (plus d'appel API).
+- `components/eventForm.tsx` : `peutGererParticipants = create || (edit && éditeur)`.
+- `app/(tabs)/home/edit/[event].tsx` : brouillon vidé à l'ouverture et à la sortie
+  ('removed') ; `enregistrer` au ✓ : DELETE des retraits → PATCH si des champs ont changé
+  → POST des invitations (avec la nouvelle heure) ; reprise sans risque après un échec
+  (DELETE idempotent, l'API ignore les déjà-participants, champs marqués sauvés).
+- Locales : `participantRemoval.confirmMessage` (fr/en).
+- Limites connues (hors portée) : un participant qui a REFUSÉ reste dans la liste, donc
+  absent de la modale — le retirer puis le réajouter annule le retrait au lieu de le
+  réinviter. Le brouillon est global (contexte) : ouvrir Modifier vide un brouillon de
+  création laissé ouvert dans un autre onglet.
+- Vérifs : tsc OK, eslint 0 erreur sur les fichiers modifiés, jest 23/23.
+
+---
+
+## Ajout (18/11/2026) — participants : les ajouts du formulaire listés à part (« à inviter (au ✓) »)
+- User : « dès que t'appuies sur Ajouter dans le modal ça ajoute, ça doit être ajouté seulement
+  au ✓ ». Vérifié en BD : aucune invitation ni notification créée depuis 19:20 UTC — rien
+  n'était envoyé. Mais l'ami choisi apparaissait DANS la liste des participants, avec la même
+  icône « en attente » qu'une invitation envoyée : il avait l'air invité.
+- `components/participantsListe.tsx` : la liste des participants = celle du serveur (moins les
+  retraits) ; les amis choisis sont dans une section à part « à inviter (au ✓) - n » (X =
+  retiré tout de suite) ; une note « n participant(s) retiré(s) au ✓ » pour les retraits.
+  Même chose en création. Hauteur animée : + titre et lignes de la section, + la note.
+- `components/participantLigne.tsx` : prop `aInviter` → pas d'icône de statut (pas encore
+  d'invitation).
+- Locales `form.toInvite`, `form.removedOnConfirm_one/_other` (fr/en).
+- Vérifs : tsc OK, eslint 0 erreur, jest 23/23.
+
+---
+
+## Ajout (18/11/2026) — retouche + nettoyage
+- User : enlever le titre « à inviter (au ✓) - n » → les amis choisis restent listés sous les
+  participants, au-dessus du +, sans icône de statut (X = retiré tout de suite). La note
+  « n participant(s) retiré(s) au ✓ » est gardée. Clé `form.toInvite` retirée (fr/en).
+- Nettoyage du code non commité : commentaires à jour (`participantsListe`, `creationEvents`
+  — doc déplacée sur `creationEvents`, `creationIndisponibilite`, étapes 1-2-3 de
+  `enregistrer` dans Modifier) ; retirés car devenus inutilisés : clé `list.inviteCount`
+  (friends fr/en), type `InviterUrl` (`types/invites.ts`). `SupprimerUrl` était déjà
+  inutilisé avant : laissé.
+- Vérifs : tsc OK, eslint 0 erreur (16 warnings préexistants), jest 23/23.

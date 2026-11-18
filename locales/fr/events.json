@@ -61,11 +61,13 @@
     "repeatedUntil": "évènement répété chaque {{unit}} jusqu'au :",
     "private": "privé",
     "public": "public",
-    "participants": "participants"
+    "participants": "participants",
+    "removedOnConfirm_one": "{{count}} participant sera retiré au ✓",
+    "removedOnConfirm_other": "{{count}} participants seront retirés au ✓"
   },
   "participantRemoval": {
     "confirmTitle": "Retirer ce participant ?",
-    "confirmMessage": "Voulez-vous retirer {{pseudo}} de cet événement ?",
+    "confirmMessage": "Êtes-vous sûr ? {{pseudo}} fait déjà partie de l'évènement.",
     "cancel": "Annuler",
     "remove": "Retirer"
   },
