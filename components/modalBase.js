@@ -23,8 +23,9 @@ import Ionicons from "@react-native-vector-icons/ionicons"
 const noop = () => {}
 
 // afficherBoutonPleinEcran: the round button (✕ / ✓) shown when the modal is full screen;
-// false for a modal that has its own confirm button (friend picker)
-export default function ModalBase({ children, canDismiss = true, onDismiss = noop, afficherBoutonPleinEcran = true }){
+// false for a modal that has its own confirm button (friend picker).
+// boutonADroite: that button in the bottom right corner instead of the bottom left.
+export default function ModalBase({ children, canDismiss = true, onDismiss = noop, afficherBoutonPleinEcran = true, boutonADroite = false }){
     const { colors } = usePalette()
     const {dismissButton, runDismissButtonAction} = useModal()
 
@@ -130,6 +131,8 @@ export default function ModalBase({ children, canDismiss = true, onDismiss = noo
             left: 16,
             backgroundColor: colors.error,
         },
+        optionsADroite: { justifyContent: 'flex-end' },
+        closeButtonADroite: { left: 0, marginRight: 16 },
         expandButton: {
             position: 'absolute',
             zIndex: 20,
@@ -331,13 +334,13 @@ export default function ModalBase({ children, canDismiss = true, onDismiss = noo
             </Animated.View>
             </KeyboardAvoidingView>
             {/* Fullscreen options */}
-            {afficherBoutonPleinEcran && <Animated.View style={[optionsAgrandirAnime, s.optionsRow]}>
+            {afficherBoutonPleinEcran && <Animated.View style={[optionsAgrandirAnime, s.optionsRow, boutonADroite && s.optionsADroite]}>
                 <TouchableOpacity 
                         onPress={() => {
                             runDismissButtonAction()
                             fermerModalBase()
                         }}
-                    style={[s.circleButtonBase, s.closeButton, {backgroundColor:dismissButton.bgColor}, dismissButton.style]}
+                    style={[s.circleButtonBase, s.closeButton, boutonADroite && s.closeButtonADroite, {backgroundColor:dismissButton.bgColor}, dismissButton.style]}
                 >
                         <Ionicons name={dismissButton.icon} size={40} color={colors.text} />
                 </TouchableOpacity>
