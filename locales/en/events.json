@@ -213,6 +213,25 @@
     "added_other": "{{count}} photos added to the album",
     "addFailed": "The photos couldn't be added",
     "loadFailed": "Couldn't load the album",
-    "noAccess": "Only the event's members can see its album"
+    "noAccess": "Only the event's members can see its album",
+    "pending": "Waiting for approval",
+    "accept": "Accept",
+    "acceptAll": "Accept all",
+    "refuse": "Refuse",
+    "review": "Review",
+    "toApprove_one": "{{count}} photo to approve",
+    "toApprove_other": "{{count}} photos to approve",
+    "wantsToAdd_one": "{{pseudo}} wants to add a photo",
+    "wantsToAdd_other": "{{pseudo}} wants to add {{count}} photos",
+    "sentForApproval_one": "Photo sent: it's waiting for the organizer's approval",
+    "sentForApproval_other": "{{count}} photos sent: they're waiting for the organizer's approval",
+    "decisionFailed": "The decision couldn't be saved",
+    "settingsFailed": "The setting couldn't be changed",
+    "approvalSetting": "Approve photos",
+    "approvalSettingHint": "Participants' photos wait for your approval before appearing in the album.",
+    "emptyWithApproval": "No photos yet. Yours will appear once the organizer approves them.",
+    "cancelTitle": "Cancel this photo?",
+    "cancelMessage": "It won't be sent to the organizer.",
+    "cancelConfirm": "Cancel the photo"
   }
 }

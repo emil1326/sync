@@ -213,6 +213,25 @@
     "added_other": "{{count}} photos ajoutées à l'album",
     "addFailed": "Les photos n'ont pas pu être ajoutées",
     "loadFailed": "Impossible de charger l'album",
-    "noAccess": "Seuls les membres de l'évènement voient son album"
+    "noAccess": "Seuls les membres de l'évènement voient son album",
+    "pending": "En attente d'approbation",
+    "accept": "Accepter",
+    "acceptAll": "Tout accepter",
+    "refuse": "Refuser",
+    "review": "Revoir",
+    "toApprove_one": "{{count}} photo à approuver",
+    "toApprove_other": "{{count}} photos à approuver",
+    "wantsToAdd_one": "{{pseudo}} veut ajouter une photo",
+    "wantsToAdd_other": "{{pseudo}} veut ajouter {{count}} photos",
+    "sentForApproval_one": "Photo envoyée : elle attend l'approbation de l'organisateur",
+    "sentForApproval_other": "{{count}} photos envoyées : elles attendent l'approbation de l'organisateur",
+    "decisionFailed": "La décision n'a pas pu être enregistrée",
+    "settingsFailed": "Le réglage n'a pas pu être changé",
+    "approvalSetting": "Approuver les photos",
+    "approvalSettingHint": "Les photos des participants attendent ton accord avant d'apparaître dans l'album.",
+    "emptyWithApproval": "Aucune photo pour l'instant. Les tiennes apparaîtront une fois approuvées par l'organisateur.",
+    "cancelTitle": "Annuler cette photo ?",
+    "cancelMessage": "Elle ne sera pas envoyée à l'organisateur.",
+    "cancelConfirm": "Annuler la photo"
   }
 }

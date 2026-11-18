@@ -1,14 +1,17 @@
 import { router } from 'expo-router'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import Icon from '@react-native-vector-icons/ionicons'
 
+import ApprobationsAlbum from '@/components/approbationsAlbum'
 import VisionneusePhotos from '@/components/visionneusePhotos'
 import { useAPI } from '@/contextes/contexteAPI'
 import { useFont } from '@/contextes/contexteFont'
 import { usePalette } from '@/contextes/contextePalette'
+import { grouperParLot } from '@/functions/photosEvenement'
 import useAlbumEvenement from '@/hooks/useAlbumEvenement'
+import { PhotoEvenement } from '@/types/albumEvenement'
 
 const TAILLE = 72
 const MAX_APERCU = 10
@@ -21,20 +24,31 @@ type Props = {
 /**
  * The event's shared photo album, as a block of its page: the latest photos in a strip,
  * a + to add some (several at once), "See all" for the whole album. Every member of the
- * event (its creator and the participants who accepted) can add photos. Not shown to
- * someone who isn't in the event.
+ * event (its creator and the participants who accepted) can add photos; those of a
+ * member who isn't an admin wait for approval (shown faded, with a clock, to them only).
+ * An admin sees the photos to approve on top. Not shown to someone who isn't in the event.
  */
 export default function AlbumEvenement({ idEvenement }: Props) {
     const { t } = useTranslation('events')
     const { colors } = usePalette()
     const { fonts } = useFont()
     const { APIBaseURL } = useAPI()
-    const { photos, accessible, envoi, ajouter, supprimer } = useAlbumEvenement(idEvenement)
+    const { album, accessible, envoi, ajouter, decider, supprimer } = useAlbumEvenement(idEvenement)
+    // the strip opened full screen (index), or the sending reviewed by an admin (its id)
     const [indexVu, setIndexVu] = useState<number | null>(null)
+    const [lotRevu, setLotRevu] = useState<string | null>(null)
 
-    if (!accessible || photos === null) return null
+    const lots = useMemo(() => grouperParLot(album?.estAdmin ? album.enAttente : []), [album])
+    // the strip: an admin's pending photos are in the approval card; one's own, first here
+    const bande = useMemo<PhotoEvenement[]>(
+        () => [...(album && !album.estAdmin ? album.enAttente : []), ...(album?.photos ?? [])].slice(0, MAX_APERCU),
+        [album]
+    )
 
-    const apercu = photos.slice(0, MAX_APERCU)
+    if (!accessible || album === null) return null
+
+    const total = album.photos.length
+    const photosRevues = lots.find((l) => l.id === lotRevu)?.photos ?? []
     const ouvrirAlbum = () => router.push({ pathname: '/(tabs)/home/details/album/[eventId]', params: { eventId: idEvenement } })
 
     return (
@@ -43,16 +57,22 @@ export default function AlbumEvenement({ idEvenement }: Props) {
                 <View style={s.titre}>
                     <Icon name="images-outline" size={22} color={colors.text} />
                     <Text style={[s.texteTitre, { color: colors.text, fontFamily: fonts.body }]}>
-                        {t('album.title')}{photos.length > 0 ? ` · ${photos.length}` : ''}
+                        {t('album.title')}{total > 0 ? ` · ${total}` : ''}
                     </Text>
                 </View>
-                {photos.length > 0 && (
-                    <TouchableOpacity onPress={ouvrirAlbum} hitSlop={8} style={s.voirTout} accessibilityRole="button">
-                        <Text style={{ color: colors.muted, fontFamily: fonts.body, fontSize: 14 }}>{t('album.seeAll')}</Text>
-                        <Icon name="chevron-forward" size={16} color={colors.muted} />
-                    </TouchableOpacity>
-                )}
+                <TouchableOpacity onPress={ouvrirAlbum} hitSlop={8} style={s.voirTout} accessibilityRole="button">
+                    <Text style={{ color: colors.muted, fontFamily: fonts.body, fontSize: 14 }}>{t('album.seeAll')}</Text>
+                    <Icon name="chevron-forward" size={16} color={colors.muted} />
+                </TouchableOpacity>
             </View>
+
+            {album.estAdmin && (
+                <ApprobationsAlbum
+                    lots={lots}
+                    onToutAccepter={(lot) => decider(lot.photos, 'acceptee')}
+                    onRevoir={(lot) => setLotRevu(lot.id)}
+                />
+            )}
 
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.bande}>
                 <TouchableOpacity
@@ -67,33 +87,53 @@ export default function AlbumEvenement({ idEvenement }: Props) {
                         ? <ActivityIndicator color={colors.muted} />
                         : <Icon name="add" size={30} color={colors.muted} />}
                 </TouchableOpacity>
-                {apercu.map((p, i) => (
+                {bande.map((p, i) => (
                     <TouchableOpacity
                         key={p.id}
                         onPress={() => setIndexVu(i)}
                         accessibilityRole="imagebutton"
-                        accessibilityLabel={t('album.open', { pseudo: p.auteur.pseudo })}
+                        accessibilityLabel={p.statut === 'en_attente' ? t('album.pending') : t('album.open', { pseudo: p.auteur.pseudo })}
                         style={[s.case, { backgroundColor: colors.border }]}
                     >
-                        <Image source={{ uri: `${APIBaseURL}${p.url}` }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+                        <Image
+                            source={{ uri: `${APIBaseURL}${p.url}` }}
+                            style={[StyleSheet.absoluteFill, p.statut === 'en_attente' && s.enAttente]}
+                            resizeMode="cover"
+                        />
+                        {p.statut === 'en_attente' && (
+                            <View style={s.badge}>
+                                <Icon name="time" size={14} color="white" />
+                            </View>
+                        )}
                     </TouchableOpacity>
                 ))}
-                {photos.length > MAX_APERCU && (
+                {total + (album.estAdmin ? 0 : album.enAttente.length) > MAX_APERCU && (
                     <TouchableOpacity onPress={ouvrirAlbum} style={[s.case, s.ajouter, { borderColor: colors.border }]} accessibilityRole="button">
-                        <Text style={{ color: colors.muted, fontFamily: fonts.title, fontSize: 16 }}>+{photos.length - MAX_APERCU}</Text>
+                        <Icon name="ellipsis-horizontal" size={24} color={colors.muted} />
                     </TouchableOpacity>
                 )}
             </ScrollView>
 
-            {photos.length === 0 && (
-                <Text style={[s.vide, { color: colors.muted, fontFamily: fonts.body }]}>{t('album.empty')}</Text>
+            {bande.length === 0 && (
+                <Text style={[s.vide, { color: colors.muted, fontFamily: fonts.body }]}>
+                    {t(album.approbation && !album.estAdmin ? 'album.emptyWithApproval' : 'album.empty')}
+                </Text>
             )}
 
             <VisionneusePhotos
-                photos={apercu}
+                photos={bande}
                 indexDepart={indexVu}
                 onFermer={() => setIndexVu(null)}
-                onSupprimer={(photo) => supprimer(photo, () => { if (apercu.length <= 1) setIndexVu(null) })}
+                onSupprimer={(photo) => supprimer(photo, () => { if (bande.length <= 1) setIndexVu(null) })}
+            />
+            <VisionneusePhotos
+                photos={photosRevues}
+                indexDepart={lotRevu && photosRevues.length > 0 ? 0 : null}
+                onFermer={() => setLotRevu(null)}
+                revue={{
+                    onAccepter: (photo) => decider([photo], 'acceptee'),
+                    onRefuser: (photo) => decider([photo], 'refusee'),
+                }}
             />
         </View>
     )
@@ -108,5 +148,17 @@ const s = StyleSheet.create({
     bande: { gap: 8 },
     case: { width: TAILLE, height: TAILLE, borderRadius: 10, overflow: 'hidden' },
     ajouter: { borderWidth: 1, borderStyle: 'dashed', alignItems: 'center', justifyContent: 'center' },
+    enAttente: { opacity: 0.45 },
+    badge: {
+        position: 'absolute',
+        right: 4,
+        bottom: 4,
+        width: 22,
+        height: 22,
+        borderRadius: 11,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: 'rgba(0,0,0,0.6)',
+    },
     vide: { fontSize: 14 },
 })

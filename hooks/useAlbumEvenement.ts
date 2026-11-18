@@ -7,13 +7,16 @@ import ToastAbs from '@/abstractions/toastAbs'
 import { toastTypes } from '@/constants/toastConfig'
 import { useAPI } from '@/contextes/contexteAPI'
 import catcher from '@/functions/catcher'
-import { ajouterPhotosEvenement, chargerPhotosEvenement, supprimerPhotoEvenement } from '@/functions/photosEvenement'
-import { PhotoEvenement } from '@/types/albumEvenement'
+import {
+    ajouterPhotosEvenement, changerApprobationAlbum, chargerAlbumEvenement, deciderPhotosEvenement, supprimerPhotoEvenement,
+} from '@/functions/photosEvenement'
+import { AlbumEvenement, PhotoEvenement } from '@/types/albumEvenement'
 
 /**
- * An event's shared album: loaded each time the screen is shown, photos added (picked
- * several at once) and deleted (after a confirmation). Used by the album block of the
- * event page and by the album screen.
+ * An event's shared album: loaded each time the screen is shown; photos added (picked
+ * several at once; waiting for approval when the member isn't an admin), accepted or
+ * refused by an admin, deleted (after a confirmation); the approval turned on or off.
+ * Used by the album block of the event page and by the album screen.
  *
  * @param {string | undefined} idEvenement - Public id.
  */
@@ -21,31 +24,33 @@ export default function useAlbumEvenement(idEvenement: string | undefined) {
     const { t } = useTranslation('events')
     const { api } = useAPI()
     // null: not loaded yet, or the member can't see this album (not in the event)
-    const [photos, setPhotos] = useState<PhotoEvenement[] | null>(null)
+    const [album, setAlbum] = useState<AlbumEvenement | null>(null)
     const [accessible, setAccessible] = useState(true)
     const [envoi, setEnvoi] = useState(false)
 
-    useFocusEffect(useCallback(() => {
+    const recharger = useCallback(async () => {
         if (!idEvenement) return
-        let actif = true
-        chargerPhotosEvenement(api, idEvenement)
-            .then((liste) => {
-                if (!actif) return
-                setAccessible(liste !== null)
-                setPhotos(liste ?? [])
-            })
-            .catch((error) => { if (actif) catcher(error, t('album.loadFailed')) })
-        return () => { actif = false }
-    }, [api, idEvenement, t]))
+        const resultat = await chargerAlbumEvenement(api, idEvenement)
+        setAccessible(resultat !== null)
+        setAlbum(resultat ?? { photos: [], enAttente: [], estAdmin: false, approbation: true })
+    }, [api, idEvenement])
+
+    useFocusEffect(useCallback(() => {
+        recharger().catch((error) => catcher(error, t('album.loadFailed')))
+    }, [recharger, t]))
 
     const ajouter = useCallback(async () => {
         if (!idEvenement || envoi) return
         try {
-            const ajoutees = await ajouterPhotosEvenement(api, idEvenement, () => setEnvoi(true))
-            if (ajoutees.length > 0) {
-                setPhotos((avant) => [...ajoutees, ...(avant ?? [])])
-                ToastAbs.show({ type: toastTypes.success, text2: t('album.added', { count: ajoutees.length }) })
-            }
+            const { photos, enAttente } = await ajouterPhotosEvenement(api, idEvenement, () => setEnvoi(true))
+            if (photos.length === 0) return
+            setAlbum((a) => a && (enAttente
+                ? { ...a, enAttente: [...photos, ...a.enAttente] }
+                : { ...a, photos: [...photos, ...a.photos] }))
+            ToastAbs.show({
+                type: toastTypes.success,
+                text2: t(enAttente ? 'album.sentForApproval' : 'album.added', { count: photos.length }),
+            })
         } catch (error) {
             catcher(error, t('album.addFailed'))
         } finally {
@@ -53,26 +58,71 @@ export default function useAlbumEvenement(idEvenement: string | undefined) {
         }
     }, [api, idEvenement, envoi, t])
 
-    /** Asks first; `onSupprimee` once it's gone (e.g. to close the viewer when it was the last one). */
-    const supprimer = useCallback((photo: PhotoEvenement, onSupprimee?: () => void) => {
-        if (!idEvenement) return
-        Alert.alert(t('album.deleteTitle'), t('album.deleteMessage'), [
-            { text: t('album.cancel'), style: 'cancel' },
-            {
-                text: t('album.deleteConfirm'),
-                style: 'destructive',
-                onPress: async () => {
-                    try {
-                        await supprimerPhotoEvenement(api, idEvenement, photo.id)
-                        setPhotos((avant) => (avant ?? []).filter((p) => p.id !== photo.id))
-                        onSupprimee?.()
-                    } catch (error) {
-                        catcher(error, t('album.deleteFailed'))
-                    }
-                },
-            },
-        ])
+    /** An admin accepts or refuses photos waiting for approval (a whole sending, or one). */
+    const decider = useCallback(async (photos: PhotoEvenement[], decision: 'acceptee' | 'refusee') => {
+        if (!idEvenement || photos.length === 0) return
+        try {
+            const ids = await deciderPhotosEvenement(api, idEvenement, { photos: photos.map((p) => p.id) }, decision)
+            const decidees = new Set(ids)
+            setAlbum((a) => {
+                if (!a) return a
+                const acceptees = a.enAttente
+                    .filter((p) => decidees.has(p.id))
+                    .map((p) => ({ ...p, statut: 'acceptee' as const }))
+                return {
+                    ...a,
+                    enAttente: a.enAttente.filter((p) => !decidees.has(p.id)),
+                    photos: decision === 'acceptee'
+                        ? [...acceptees, ...a.photos].sort((x, y) => y.cree_le.localeCompare(x.cree_le))
+                        : a.photos,
+                }
+            })
+        } catch (error) {
+            catcher(error, t('album.decisionFailed'))
+        }
     }, [api, idEvenement, t])
 
-    return { photos, accessible, envoi, ajouter, supprimer }
+    /** An admin turns the approval on or off (shown at once, put back if it fails). */
+    const changerApprobation = useCallback(async (approbation: boolean) => {
+        if (!idEvenement) return
+        setAlbum((a) => a && { ...a, approbation })
+        try {
+            await changerApprobationAlbum(api, idEvenement, approbation)
+        } catch (error) {
+            setAlbum((a) => a && { ...a, approbation: !approbation })
+            catcher(error, t('album.settingsFailed'))
+        }
+    }, [api, idEvenement, t])
+
+    /** Asks first; `onSupprimee` once it's gone (e.g. to close the viewer). */
+    const supprimer = useCallback((photo: PhotoEvenement, onSupprimee?: () => void) => {
+        if (!idEvenement) return
+        const enAttente = photo.statut === 'en_attente'
+        Alert.alert(
+            t(enAttente ? 'album.cancelTitle' : 'album.deleteTitle'),
+            t(enAttente ? 'album.cancelMessage' : 'album.deleteMessage'),
+            [
+                { text: t('album.cancel'), style: 'cancel' },
+                {
+                    text: t(enAttente ? 'album.cancelConfirm' : 'album.deleteConfirm'),
+                    style: 'destructive',
+                    onPress: async () => {
+                        try {
+                            await supprimerPhotoEvenement(api, idEvenement, photo.id)
+                            setAlbum((a) => a && {
+                                ...a,
+                                photos: a.photos.filter((p) => p.id !== photo.id),
+                                enAttente: a.enAttente.filter((p) => p.id !== photo.id),
+                            })
+                            onSupprimee?.()
+                        } catch (error) {
+                            catcher(error, t('album.deleteFailed'))
+                        }
+                    },
+                },
+            ],
+        )
+    }, [api, idEvenement, t])
+
+    return { album, accessible, envoi, ajouter, decider, changerApprobation, supprimer }
 }

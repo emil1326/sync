@@ -48,7 +48,8 @@
 			"friendship": "Tu as un nouvel ami",
 			"friendRequest": "Nouvelle demande d'ami",
 			"other": "Nouvelle notification",
-			"message": "Nouveau message"
+			"message": "Nouveau message",
+			"album": "Album photo"
 		},
 		"tapToOpen": "Touche pour voir"
 	}

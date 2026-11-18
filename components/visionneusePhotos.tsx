@@ -19,14 +19,20 @@ type Props = {
     onFermer: () => void
     /** asks to delete a photo (only offered on the ones the member may delete) */
     onSupprimer?: (photo: PhotoEvenement) => void
+    /** review mode (an admin going through photos waiting for approval): ✕ refuse, ✓ accept */
+    revue?: {
+        onAccepter: (photo: PhotoEvenement) => void
+        onRefuser: (photo: PhotoEvenement) => void
+    }
 }
 
 /**
  * An event album's photos full screen: swipe between them, who added each one and
- * when, a delete button on the member's own photos (and on every one for the event's
- * creator). Tap the photo or ✕ to close.
+ * when (and "waiting for approval"), a delete button on the member's own photos (and on
+ * every one for an admin). In review mode, ✕ / ✓ to refuse / accept the photo shown.
+ * Tap the photo or ✕ at the top to close.
  */
-export default function VisionneusePhotos({ photos, indexDepart, onFermer, onSupprimer }: Props) {
+export default function VisionneusePhotos({ photos, indexDepart, onFermer, onSupprimer, revue }: Props) {
     const { t } = useTranslation('events')
     const { fonts } = useFont()
     const { APIBaseURL } = useAPI()
@@ -87,10 +93,33 @@ export default function VisionneusePhotos({ photos, indexDepart, onFermer, onSup
                                 <Text style={[s.texte, { fontFamily: fonts.title }]} numberOfLines={1}>
                                     {photo.de_moi ? t('album.you') : photo.auteur.pseudo}
                                 </Text>
-                                <Text style={[s.detail, { fontFamily: fonts.body }]}>{quand(photo.cree_le)}</Text>
+                                <Text style={[s.detail, { fontFamily: fonts.body }]}>
+                                    {quand(photo.cree_le)}{photo.statut === 'en_attente' ? ` · ${t('album.pending')}` : ''}
+                                </Text>
                             </View>
                         </View>
-                        {photo.peut_supprimer && onSupprimer && (
+                        {revue ? (
+                            <View style={s.decision}>
+                                <TouchableOpacity
+                                    onPress={() => revue.onRefuser(photo)}
+                                    hitSlop={8}
+                                    style={[s.grosRond, { backgroundColor: 'rgba(255,255,255,0.15)' }]}
+                                    accessibilityRole="button"
+                                    accessibilityLabel={t('album.refuse')}
+                                >
+                                    <Icon name="close" size={26} color="white" />
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    onPress={() => revue.onAccepter(photo)}
+                                    hitSlop={8}
+                                    style={[s.grosRond, { backgroundColor: '#2e9d5b' }]}
+                                    accessibilityRole="button"
+                                    accessibilityLabel={t('album.accept')}
+                                >
+                                    <Icon name="checkmark" size={26} color="white" />
+                                </TouchableOpacity>
+                            </View>
+                        ) : photo.peut_supprimer && onSupprimer && (
                             <TouchableOpacity
                                 onPress={() => onSupprimer(photo)}
                                 hitSlop={12}
@@ -122,6 +151,8 @@ const s = StyleSheet.create({
     auteur: { flexDirection: 'row', alignItems: 'center', gap: 10, flexShrink: 1 },
     texte: { color: 'white', fontSize: 15 },
     detail: { color: 'rgba(255,255,255,0.7)', fontSize: 12 },
+    decision: { flexDirection: 'row', gap: 14 },
+    grosRond: { width: 52, height: 52, borderRadius: 26, alignItems: 'center', justifyContent: 'center' },
     rond: {
         width: 40,
         height: 40,
