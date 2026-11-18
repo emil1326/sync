@@ -7,6 +7,7 @@ import { useFont } from '@/contextes/contexteFont'
 import { useConversations } from '@/contextes/contexteConversations'
 import { useRouteAbs } from '@/contextes/contexteRoute'
 import { useNavFab } from '@/hooks/useNavFAB'
+import Icon from '@react-native-vector-icons/ionicons'
 
 import ConversationItem from '@/components/conversationItem'
 import NotificationItem from '@/components/notificationItem'
@@ -53,7 +54,13 @@ export default function Inbox(){
         visible: true,
         href: '/(modals)/listeAmis',
         params: { type: 'message' },
-        icon: null,
+        // a chat bubble with a + inside: "new message"
+        icon: (
+            <View style={styles.iconeNouveauMessage}>
+                <Icon name="chatbubble-outline" size={30} color={colors.text} />
+                <Icon name="add" size={18} color={colors.text} style={styles.plusDansBulle} />
+            </View>
+        ),
     })
 
     // Erased on my side only, after a confirmation: the others keep it, and it comes back
@@ -108,6 +115,9 @@ export default function Inbox(){
 
 
 const styles = StyleSheet.create({
+    iconeNouveauMessage: { width: 30, height: 30, alignItems: 'center', justifyContent: 'center' },
+    // centred in the round part of the bubble (its tail is at the bottom)
+    plusDansBulle: { position: 'absolute', top: 5 },
     conteneur: {flex:1},
     vide:{ paddingTop: 96, paddingHorizontal:32},
     demandes:{ paddingHorizontal: 12, paddingTop: 12, paddingBottom: 8 },

@@ -22,7 +22,9 @@ import Ionicons from "@react-native-vector-icons/ionicons"
 
 const noop = () => {}
 
-export default function ModalBase({ children, canDismiss = true, onDismiss = noop }){
+// afficherBoutonPleinEcran: the round button (✕ / ✓) shown when the modal is full screen;
+// false for a modal that has its own confirm button (friend picker)
+export default function ModalBase({ children, canDismiss = true, onDismiss = noop, afficherBoutonPleinEcran = true }){
     const { colors } = usePalette()
     const {dismissButton, runDismissButtonAction} = useModal()
 
@@ -38,10 +40,15 @@ export default function ModalBase({ children, canDismiss = true, onDismiss = noo
             flex:1
         },
 
+        // The whole screen behind the sheet: a tap anywhere outside the modal closes it.
+        // (55% high with no top, it was laid out at the bottom by justifyContent
+        // 'flex-end', under the sheet: tapping above the modal did nothing.)
         overlayPressable: {
             position: 'absolute',
-            height: '55%',
-            width: '100%',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
         },
         blurBackdrop: {
             zIndex: -1,
@@ -324,7 +331,7 @@ export default function ModalBase({ children, canDismiss = true, onDismiss = noo
             </Animated.View>
             </KeyboardAvoidingView>
             {/* Fullscreen options */}
-            <Animated.View style={[optionsAgrandirAnime, s.optionsRow]}>
+            {afficherBoutonPleinEcran && <Animated.View style={[optionsAgrandirAnime, s.optionsRow]}>
                 <TouchableOpacity 
                         onPress={() => {
                             runDismissButtonAction()
@@ -334,7 +341,7 @@ export default function ModalBase({ children, canDismiss = true, onDismiss = noo
                 >
                         <Ionicons name={dismissButton.icon} size={40} color={colors.text} />
                 </TouchableOpacity>
-            </Animated.View>
+            </Animated.View>}
             </View>
         </GestureHandlerRootView>
     )         

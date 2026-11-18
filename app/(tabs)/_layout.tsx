@@ -37,7 +37,10 @@ export default function TabLayout() {
         headerShown: false,
         tabBarLabelStyle: { fontFamily: fonts.title },
         tabBarBadgeStyle: { backgroundColor: colors.error, left: 20, color: colors.text },
-       
+        // The tabs you're not on stop re-rendering (conversations / notifications
+        // refreshing, the timeline...): switching tabs no longer competes with them.
+        // They catch up as soon as you come back.
+        freezeOnBlur: true,
       }}
     >
       <Tabs.Screen
@@ -67,8 +70,19 @@ export default function TabLayout() {
       />
       <Tabs.Screen
         name="feed"
+        // Plain tab switch (no `href`: as a link, the tab opened the route again, which
+        // made switching slow); pressed again while deeper in it: back to the list.
+        listeners={({ navigation }) => ({
+          tabPress: (e) => {
+            const etatOnglets = navigation.getState()
+            const ongletFeed = etatOnglets.routes[etatOnglets.index]
+            const pileFeed = ongletFeed?.name === 'feed' ? ongletFeed.state : undefined
+            if (!pileFeed?.key || (pileFeed.index ?? 0) === 0) return
+            e.preventDefault()
+            navigation.dispatch({ type: 'POP_TO_TOP', target: pileFeed.key })
+          },
+        })}
         options={{
-          href:'/(tabs)/feed',
           title: t('common:tabs.feed'),
           headerTitle:t('common:tabs.feedTitle'),
           tabBarIcon: ({ color }) => <TabBarIcon name="list-outline" color={color} />,
@@ -110,8 +124,19 @@ export default function TabLayout() {
       />
       <Tabs.Screen
         name="profile"
+        // Same as the feed tab: plain tab switch, and back to the profile when pressed again
+        // from settings, editing...
+        listeners={({ navigation }) => ({
+          tabPress: (e) => {
+            const etatOnglets = navigation.getState()
+            const ongletProfil = etatOnglets.routes[etatOnglets.index]
+            const pileProfil = ongletProfil?.name === 'profile' ? ongletProfil.state : undefined
+            if (!pileProfil?.key || (pileProfil.index ?? 0) === 0) return
+            e.preventDefault()
+            navigation.dispatch({ type: 'POP_TO_TOP', target: pileProfil.key })
+          },
+        })}
         options={{
-          href:'/(tabs)/profile',
           title: t('common:tabs.profile'),
           headerTitle:t('common:tabs.profileTitle'),
           tabBarIcon: ({ color }) => <TabBarIcon name="person-circle-outline" color={color} />,
