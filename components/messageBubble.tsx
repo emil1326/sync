@@ -152,6 +152,8 @@ const styles = StyleSheet.create({
     // the avatar column already takes some width
     bulleGroupe: { maxWidth: '85%' },
     bulleImage: { paddingHorizontal: 4, paddingTop: 4, paddingBottom: 6 },
+    // the time, small, in the bubble's bottom right corner
+    heure: { fontSize: 10, alignSelf: 'flex-end' },
     heureImage: { paddingRight: 6 },
     pseudo: { fontSize: 11, marginTop: 3, marginLeft: 4 },
 })
