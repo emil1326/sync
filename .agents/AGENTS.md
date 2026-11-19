@@ -3,6 +3,7 @@
 ## Incertitude
 - Ne devine jamais. Si une information manque (nom de champ, comportement,
   version d'une librairie), arrête-toi et pose-moi la question.
+- Mets toujours a jour les fichiers que tu vas éditer, il se peut que je fasses des modifications.
 
 ## Bugs
 - Si tu trouves un bug hors du sujet de la tâche, ne le corrige pas.

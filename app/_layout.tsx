@@ -42,6 +42,8 @@ import { NotificationProvider } from '@/contextes/contexteNotifications';
 import { SettingsProvider, useSettings } from '@/contextes/contexteSettings';
 import { SignalementsProvider } from '@/contextes/contexteSignalements';
 import { TimelineProvider } from '@/contextes/contexteTimeline';
+import { TutorielProvider, useTutoriel } from '@/contextes/contexteTutoriel';
+import { TutorielEcran } from '@/components/TutorielEcran';
 import { initLocalization } from '@/locales/initLocale';
 import { configurerAffichagePremierPlan } from '@/functions/notificationsPush';
 import useNotificationsPush from '@/hooks/useNotificationsPush';
@@ -61,48 +63,45 @@ configurerAffichagePremierPlan();
 
 export default function RootLayout() {
   return (
-    
     <GestureHandlerRootView style={{ flex: 1 }}>
       <FontProvider>
         <AccessTokenProvider>
           <MockModeProvider>
-            <APIProvider>
-              <SignalementsProvider>
-              
-                <SettingsProvider>
-                  <PaletteProvider>
-                    <MembreProvider>
-                      <AuthProvider> 
-                        <NotificationProvider>
-                          <ConversationsProvider>
-                            <RouteAbsProvider>
-                              <ModalProvider>                  
-                                <FabProvider>
-                                  <TimelineProvider>
-                                    <GestionScrollProvider> 
-                                      <InvitesProvider>
-                                        
-                                          <AppLoader />  
-                                    
-                                      </InvitesProvider>  
-                                    </GestionScrollProvider>
-                                  </TimelineProvider>
-                                </FabProvider>                  
-                              </ModalProvider>
-                            </RouteAbsProvider>
-                          </ConversationsProvider>   
-                        </NotificationProvider>  
-                      </AuthProvider>
-                    </MembreProvider>
-                  </PaletteProvider>
-                </SettingsProvider>
-              </SignalementsProvider>
-            </APIProvider>
+            <TutorielProvider>
+              <APIProvider>
+                <SignalementsProvider>
+                  <SettingsProvider>
+                    <PaletteProvider>
+                      <MembreProvider>
+                        <AuthProvider>
+                          <NotificationProvider>
+                            <ConversationsProvider>
+                              <RouteAbsProvider>
+                                <ModalProvider>
+                                  <FabProvider>
+                                    <TimelineProvider>
+                                      <GestionScrollProvider>
+                                        <InvitesProvider>
+                                          <AppLoader />
+                                        </InvitesProvider>
+                                      </GestionScrollProvider>
+                                    </TimelineProvider>
+                                  </FabProvider>
+                                </ModalProvider>
+                              </RouteAbsProvider>
+                            </ConversationsProvider>
+                          </NotificationProvider>
+                        </AuthProvider>
+                      </MembreProvider>
+                    </PaletteProvider>
+                  </SettingsProvider>
+                </SignalementsProvider>
+              </APIProvider>
+            </TutorielProvider>
           </MockModeProvider>
-        </AccessTokenProvider>            
+        </AccessTokenProvider>
       </FontProvider>
     </GestureHandlerRootView>
-    
   );
 }
 
@@ -158,6 +157,7 @@ function RootLayoutNav() {
           if (acceleration < 2.3 || dejaDansSignalement || maintenant - dernierDeclenchement < 2000) return
 
           dernierDeclenchement = maintenant
+
           router.push('/(modals)/reportBug')
         })
       } catch (error) {
@@ -179,38 +179,64 @@ function RootLayoutNav() {
   }
 
   return (
-    <ThemeProvider value={navTheme}>
-      <View style={{ flex: 1 }}>
-      <Stack>
-        {/* Modals and scanQR are only ever opened by a signed-in member, so they live
-            behind the same guard as the tabs: signing out removes them all at once and
-            shows (auth). Outside the guard, an open modal (e.g. the sign-out confirmation)
-            stayed on top of the login screen. */}
-        <Stack.Protected guard={state === 'authenticated'}>
-          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          <Stack.Screen
-            name="(modals)"
-            options={{
-              presentation: 'transparentModal',
-              animation: 'none',
-              gestureEnabled: false,
-              headerShown: false,
-            }}
-          />
-          <Stack.Screen
-            name='scanQR'
-            options={{
-              headerShown:false
-            }}
-          />
-        </Stack.Protected>
-        <Stack.Protected guard={state === 'unauthenticated'}>
-          <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-        </Stack.Protected>
-      </Stack>
-      <RequestStatus />      
-      </View>
-      <Toast config={toastConfig}/>
-    </ThemeProvider>
+    <>
+      <ThemeProvider value={navTheme}>
+        <View style={{ flex: 1 }}>
+        <Stack>
+          {/* Modals and scanQR are only ever opened by a signed-in member, so they live
+              behind the same guard as the tabs: signing out removes them all at once and
+              shows (auth). Outside the guard, an open modal (e.g. the sign-out confirmation)
+              stayed on top of the login screen. */}
+          <Stack.Protected guard={state === 'authenticated'}>
+            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            <Stack.Screen
+              name="(modals)"
+              options={{
+                presentation: 'transparentModal',
+                animation: 'none',
+                gestureEnabled: false,
+                headerShown: false,
+              }}
+            />
+            <Stack.Screen
+              name='scanQR'
+              options={{
+                headerShown:false
+              }}
+            />
+          </Stack.Protected>
+          <Stack.Protected guard={state === 'unauthenticated'}>
+            <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+          </Stack.Protected>
+        </Stack>
+        <RequestStatus />      
+        </View>
+        <Toast config={toastConfig}/>
+      </ThemeProvider>
+
+      {/* Tutoriel : uniquement quand l'utilisateur est authentifié */}
+      {state === 'authenticated' && (
+        <>
+          <TutorielBootstrapperNav />
+          <TutorielEcran />
+        </>
+      )}
+    </>
   );
+}
+
+/**
+ * TutorielBootstrapperNav : démarre automatiquement le tutoriel au premier lancement.
+ * Doit être rendu à l'intérieur du TutorielProvider et de l'AuthProvider.
+ */
+export function TutorielBootstrapperNav() {
+  const { isCompleted, isLoading, startTutorial } = useTutoriel();
+
+  useEffect(() => {
+    if (!isLoading && !isCompleted) {
+      void startTutorial();
+    }
+  }, [isLoading, isCompleted, startTutorial]);
+
+  return null;
 }

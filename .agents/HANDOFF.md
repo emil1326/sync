@@ -910,3 +910,38 @@ Les deux clients acceptent `com.alkemist.sync:/oauth2redirect` (vérifié via
 - Suites restantes inchangées : ajouter l'endpoint de préférences Outlook si cette
   fonction doit être offerte, compléter `docs/03-fonctions.md` et `docs/07-config.md`
   pour Outlook, et tester les flux OAuth sur appareil avec la configuration Microsoft.
+
+---
+
+# HANDOFF — Tutoriel interactif Sync (18/11/2026)
+
+## Contexte
+Projet React Native + Expo (SDK 58), Expo Router, déjà avancé. Fiche technique du tutoriel : `C:\Users\AntecPC\Downloads\Sync – Fiche technique du tutoriel interactif.md`. Plan en 8 phases dans `TODO_TUTORIEL.md`.
+
+## Fait (vérifié tsc + eslint)
+- `expo-sqlite` installé via `npx expo install expo-sqlite` (config plugin ajouté à `app.json`)
+- `assets/tutorial_seed.js` existait déjà (551 lignes, seed fictif complet : membres, amitiés, événements, conversations, messages, scénario)
+- `contextes/contexteTutoriel.tsx` (nouveau) : `useTutoriel()` — état `step`, `isCompleted`, `isTutorialMode`, `db`, `explicationIndex` ; actions `startTutorial`, `nextStep`, `setStep`, `nextExplication`, `validerAction`, `completeTutorial`, `skipTutorial`, `reloadStep` ; ouverture `tutorial.db` (séparée de la vraie base), insertion du seed en transaction, lecture/écriture `tutorial_completed` via AsyncStorage, sauvegarde reprise par étape
+- `constants/etapesTutoriel.ts` (nouveau) : structure `EtapeTutoriel` (`id`, `screen`, `target`, `title`, `message`, `successCondition`, `explications?[{position, text}]`) + 11 étapes définies + helpers `getEtape`, `getExplication`, `nbExplications`
+- `components/spotlightOverlay.tsx` (nouveau) : trou lumineux cliquable via 4 rectangles bloquants autour du trou (pas de trou dans une vue parente) + masque SVG arrondi en `pointerEvents="none"`, Reanimated v4 avec `withTiming`
+- `components/TutorielEcran.tsx` (nouveau) : bulle + boutons Suivant/Passer (confirmation via `Alert.alert`) + badge « MODE DÉMO » + zone tactile pour explications intermédiaires ; utilise `usePalette()` (couleurs), `useFont()` (polices), `Radius` (bordures) ; styles dans `StyleSheet.create` à part, couleurs dynamiques en styles inline ; `conteneur` en `absoluteFill` (overlay par-dessus tout)
+- `app/_layout.tsx` : `TutorielProvider` injecté dans la chaîne des providers ; `TutorielBootstrapperNav` (démarrage auto `startTutorial()` si `!completed`) et `<TutorielEcran />` rendus à l'intérieur de `TutorielProvider`, conditionnés par `state === 'authenticated'` (plus d'affichage sur la page de login)
+- `tsc --noEmit` : 0 erreur sur tous les fichiers modifiés
+- `eslint` : 0 erreur sur tous les fichiers modifiés
+
+## Reste (phases 5 à 8 du plan)
+- Ajouter `testID` sur les écrans cibles (`tuto-bouton-creer-indisponibilite`, `tuto-bouton-creer-evenement`, etc.) et appeler `validerAction('...')` quand l'action réelle est faite (branchement des 11 étapes)
+- Ajouter les traductions `tuto.*` dans `locales/fr/` et `locales/en/`
+- Bouton « Revoir le tutoriel » dans les réglages (appelle `startTutorial()`)
+- Gestion retour Android / geste retour iOS pendant une étape
+- Accessibilité (lecteur d'écran, contraste des bulles)
+- Tests : premier lancement, reprise après fermeture, bouton « Passer », relecture depuis réglages, vraie base jamais touchée
+
+## Décisions prises
+- `MockMode` non utilisé pour le tuto (base fictive dédiée `tutorial.db`, pas de `contexteMockMode`)
+- `etapesTutoriel.ts` dans `constants/` (pas `contextes/`)
+- `TutorielEcran` en `absoluteFill` pour flotter par-dessus tout (pas dans le flux normal)
+- `isTutorialMode` comme garde unique d'affichage (pas `isLoading` qui fluctue pendant `startTutorial` et causait un flicker)
+
+## Bugs hors sujet (non corrigés, notés)
+- Aucun trouvé dans le périmètre du tutoriel pour l'instant.

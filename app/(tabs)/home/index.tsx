@@ -1232,7 +1232,7 @@ export default function Home() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <View style={s.container}>
+      <View style={s.container} testID='tuto-ecran-accueil'>
 
         {/* ── Friend search (user story 22), opened by the magnifier left of the hours ── */}
         {rechercheOuverte && (
