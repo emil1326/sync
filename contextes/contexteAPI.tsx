@@ -3,7 +3,7 @@ import catcher from "@/functions/catcher";
 import { emptyTokens, getToken, setToken } from "@/functions/tokenStore";
 import axios, { AxiosInstance, InternalAxiosRequestConfig } from "axios";
 import Constants from 'expo-constants';
-import * as SecureStore from 'expo-secure-store';
+import * as SecureStore from '@/functions/stockageSecurise';
 import { createContext, useContext, useMemo } from "react";
 
 import { requestListener } from "@/events/requestEvents";
